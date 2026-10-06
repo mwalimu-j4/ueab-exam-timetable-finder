@@ -33,7 +33,7 @@ function AdminLogin() {
         title: 'Login successful',
         description: `Welcome back, ${response.email}`,
       });
-      navigate({ to: '/admin/dashboard' });
+      navigate({ to: '/admin/timetables' });
     } catch (error: any) {
       toast({
         title: 'Login failed',

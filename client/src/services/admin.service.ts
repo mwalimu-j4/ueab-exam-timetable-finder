@@ -22,7 +22,7 @@ export async function uploadTimetable(
   onProgress?: (progress: number) => void
 ): Promise<UploadResponse> {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('pdf', file);
   formData.append('name', name);
 
   const response = await apiClient.post<UploadResponse>('/api/admin/timetables/upload', formData, {

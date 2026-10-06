@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-ssr/
+*.log
+*.local
+.env
+.env.local
+.env.production
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea
+.pnpm-store/
+coverage/
+src/routeTree.gen.ts
+.agents/

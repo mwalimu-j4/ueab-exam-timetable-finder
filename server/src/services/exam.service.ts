@@ -39,7 +39,7 @@ export async function searchExams(params: SearchParams) {
   }
 
   if (params.building) {
-    where.building = params.building;
+    where.building = { contains: params.building, mode: 'insensitive' };
   }
 
   if (params.session) {

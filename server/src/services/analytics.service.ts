@@ -51,7 +51,7 @@ export async function getAnalytics(from?: string, to?: string) {
 
   const dailyVisitors = visits.map(v => ({
     date: v.date,
-    visitors: v._count.visitorId,
+    count: v._count.visitorId,
   }));
 
   // Total searches

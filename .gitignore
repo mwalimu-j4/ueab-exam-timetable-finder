@@ -1,9 +1,11 @@
 node_modules/
-dist/
 .env
+dist/
+build/
 *.log
 .DS_Store
 Thumbs.db
 .pnpm-store/
 coverage/
+.nyc_output/
 .agents/

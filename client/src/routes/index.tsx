@@ -1,6 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
 import { Route as rootRoute } from './__root';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,6 @@ import { Calendar as CalendarIcon, Download, Plus, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { searchExams } from '@/services/exam.service';
-import { recordVisit, recordEvent } from '@/services/tracking.service';
-import { getVisitorId } from '@/lib/visitor';
 import { useToast } from '@/components/ui/use-toast';
 import type { Exam } from '@/types/api.types';
 
@@ -35,11 +33,6 @@ function Index() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  useEffect(() => {
-    const visitorId = getVisitorId();
-    recordVisit(visitorId).catch(console.error);
-  }, []);
-
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -54,8 +47,6 @@ function Index() {
 
       const exams = await searchExams(params);
       setResults(exams);
-
-      await recordEvent({ type: 'SEARCH', query: query || undefined });
 
       if (exams.length === 0) {
         toast({
@@ -74,8 +65,7 @@ function Index() {
     }
   };
 
-  const handleDownloadICS = async (exam: Exam) => {
-    await recordEvent({ type: 'DOWNLOAD_ICS', query: exam.code });
+  const handleDownloadICS = async () => {
     toast({
       title: 'ICS Download',
       description: 'Calendar event feature coming soon',
@@ -83,7 +73,6 @@ function Index() {
   };
 
   const handleAddCourse = async (exam: Exam) => {
-    await recordEvent({ type: 'ADD_COURSE', query: exam.code });
     toast({
       title: 'Course Added',
       description: `${exam.code} has been added to your list`,
@@ -210,7 +199,7 @@ function Index() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleDownloadICS(exam)}
+                              onClick={() => handleDownloadICS()}
                             >
                               <Download className="h-3 w-3" />
                             </Button>

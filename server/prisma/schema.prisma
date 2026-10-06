@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model TimetableVersion {
+  id         String   @id @default(cuid())
+  name       String
+  pdfUrl     String?
+  rowCount   Int
+  isActive   Boolean  @default(false)
+  uploadedAt DateTime @default(now())
+  exams      Exam[]
+}
+
+model Exam {
+  id         String            @id @default(cuid())
+  versionId  String
+  date       DateTime
+  dayName    String
+  start      String
+  end        String
+  code       String
+  title      String
+  option     String?
+  instructor String?
+  building   String?
+  venue      String?
+  rows       Int?
+  students   Int?
+  version    TimetableVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@index([code])
+  @@index([date])
+}
+
+model Visit {
+  id        String @id @default(cuid())
+  date      String
+  visitorId String
+
+  @@unique([date, visitorId])
+}
+
+enum EventType {
+  SEARCH
+  DOWNLOAD_PDF
+  DOWNLOAD_ICS
+  ADD_COURSE
+}
+
+model Event {
+  id        String    @id @default(cuid())
+  type      EventType
+  query     String?
+  createdAt DateTime  @default(now())
+}
+
+model Admin {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+}

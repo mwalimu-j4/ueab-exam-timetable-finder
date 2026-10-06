@@ -102,6 +102,7 @@ export function VersionHistory({
                       version.isActive ||
                       (isDeleting && deletingId === version.id)
                     }
+                    title={version.isActive ? 'Active timetable cannot be deleted' : ''}
                   >
                     {isDeleting && deletingId === version.id ? 'Deleting...' : 'Delete'}
                   </Button>

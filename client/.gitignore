@@ -13,5 +13,4 @@ Thumbs.db
 .idea
 .pnpm-store/
 coverage/
-src/routeTree.gen.ts
 .agents/

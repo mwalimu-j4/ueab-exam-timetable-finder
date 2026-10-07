@@ -1,21 +1,15 @@
 import { createRoute } from '@tanstack/react-router';
 import { Route as rootRoute } from './__root';
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, Download, Plus, Search } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { searchExams } from '@/services/exam.service';
-import { useToast } from '@/components/ui/use-toast';
-import type { Exam } from '@/types/api.types';
+import { useState, useEffect } from 'react';
+import { SearchHero } from '@/components/search/SearchHero';
+import { ResultCard } from '@/components/search/ResultCard';
+import { MyExamsSheet } from '@/components/search/MyExamsSheet';
+import { EmptyState } from '@/components/search/EmptyState';
+import { useExamSearch } from '@/hooks/useExamSearch';
+import { useSavedExams } from '@/hooks/useSavedExams';
+import { useVisitTracker } from '@/hooks/useVisitTracker';
+import { apiClient } from '@/lib/api';
+import type { TimetableVersion } from '@/types/api.types';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -24,207 +18,78 @@ export const Route = createRoute({
 });
 
 function Index() {
-  const { toast } = useToast();
   const [query, setQuery] = useState('');
-  const [date, setDate] = useState<Date>();
-  const [building, setBuilding] = useState('');
-  const [session, setSession] = useState('');
-  const [results, setResults] = useState<Exam[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
+  const { results, loading, error } = useExamSearch(query);
+  const { saved, save, remove, isSaved, clashes } = useSavedExams();
+  const { trackEvent } = useVisitTracker();
+  const [activeVersionDate, setActiveVersionDate] = useState<string | undefined>();
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setSearched(true);
+  // Fire SEARCH event 1 second after user stops typing
+  useEffect(() => {
+    if (!query.trim()) return;
+    const timer = setTimeout(() => {
+      trackEvent('SEARCH', query);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [query, trackEvent]);
 
-    try {
-      const params: any = {};
-      if (query) params.q = query;
-      if (date) params.date = format(date, 'yyyy-MM-dd');
-      if (building) params.building = building;
-      if (session) params.session = session;
+  // Fetch active timetable version date for footer
+  useEffect(() => {
+    apiClient.get<TimetableVersion[]>('/api/admin/timetables')
+      .then(res => {
+        const active = res.data.find(v => v.isActive);
+        if (active) setActiveVersionDate(active.uploadedAt);
+      })
+      .catch(() => {});
+  }, []);
 
-      const exams = await searchExams(params);
-      setResults(exams);
+  const handleChipClick = (chip: string) => setQuery(chip);
 
-      if (exams.length === 0) {
-        toast({
-          title: 'No results found',
-          description: 'Try adjusting your search criteria',
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to search exams',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDownloadICS = async () => {
-    toast({
-      title: 'ICS Download',
-      description: 'Calendar event feature coming soon',
-    });
-  };
-
-  const handleAddCourse = async (exam: Exam) => {
-    toast({
-      title: 'Course Added',
-      description: `${exam.code} has been added to your list`,
-    });
-  };
+  const showIdle = !query || query.trim().length < 2;
+  const showLoading = !showIdle && loading;
+  const showError = !showIdle && !loading && !!error;
+  const showNoResults = !showIdle && !loading && !error && results.length === 0;
+  const showResults = !showIdle && !loading && !error && results.length > 0;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Search Exam Timetable</CardTitle>
-          <CardDescription>Find your exam schedule by course code, title, instructor, or date</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="query">Course Code or Title</Label>
-                <Input
-                  id="query"
-                  placeholder="e.g., CS101 or Computer Science"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+    <div className="min-h-screen bg-surface dark:bg-[#140E24]">
+      <SearchHero value={query} onChange={setQuery} />
+      <main className="container mx-auto px-4 py-6 max-w-2xl">
+        {showIdle && <EmptyState variant="idle" onChipClick={handleChipClick} />}
+        {showLoading && <EmptyState variant="loading" />}
+        {showError && <EmptyState variant="error" />}
+        {showNoResults && <EmptyState variant="no-results" />}
+        {showResults && (
+          <div
+            className="space-y-4"
+            role="list"
+            aria-label={`${results.length} exam result${results.length !== 1 ? 's' : ''}`}
+          >
+            {results.map(exam => (
+              <div key={exam.id} role="listitem">
+                <ResultCard
+                  exam={exam}
+                  isSaved={isSaved(exam.id)}
+                  onToggleSave={save}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label>Exam Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !date && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, 'PPP') : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="building">Building</Label>
-                <Input
-                  id="building"
-                  placeholder="e.g., Main Block"
-                  value={building}
-                  onChange={(e) => setBuilding(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="session">Session/Option</Label>
-                <Select value={session} onValueChange={setSession}>
-                  <SelectTrigger id="session">
-                    <SelectValue placeholder="Select session" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Sessions</SelectItem>
-                    <SelectItem value="Main">Main</SelectItem>
-                    <SelectItem value="Group A">Group A</SelectItem>
-                    <SelectItem value="Group B">Group B</SelectItem>
-                    <SelectItem value="Group C">Group C</SelectItem>
-                    <SelectItem value="Group D">Group D</SelectItem>
-                    <SelectItem value="Inter Session 1">Inter Session 1</SelectItem>
-                    <SelectItem value="Inter Session 2">Inter Session 2</SelectItem>
-                    <SelectItem value="Blended Online">Blended Online</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              <Search className="mr-2 h-4 w-4" />
-              {loading ? 'Searching...' : 'Search'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {searched && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Results ({results.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {results.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Day</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Option</TableHead>
-                      <TableHead>Instructor</TableHead>
-                      <TableHead>Venue</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {results.map((exam) => (
-                      <TableRow key={exam.id}>
-                        <TableCell>{format(new Date(exam.date), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell>{exam.dayName}</TableCell>
-                        <TableCell>{exam.start} - {exam.end}</TableCell>
-                        <TableCell className="font-medium">{exam.code}</TableCell>
-                        <TableCell>{exam.title}</TableCell>
-                        <TableCell>
-                          {exam.option && <Badge variant="secondary">{exam.option}</Badge>}
-                        </TableCell>
-                        <TableCell>{exam.instructor}</TableCell>
-                        <TableCell>{exam.building} - {exam.venue}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDownloadICS()}
-                            >
-                              <Download className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleAddCourse(exam)}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">
-                No exams found matching your criteria
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            ))}
+          </div>
+        )}
+      </main>
+      {/* Footer */}
+      <footer className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+        {activeVersionDate && (
+          <p>Timetable last updated: {new Date(activeVersionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        )}
+        <p className="mt-1">Made for UEAB students 💜</p>
+      </footer>
+      <MyExamsSheet
+        saved={saved}
+        clashes={clashes}
+        onRemove={remove}
+        activeVersionDate={activeVersionDate}
+      />
     </div>
   );
 }

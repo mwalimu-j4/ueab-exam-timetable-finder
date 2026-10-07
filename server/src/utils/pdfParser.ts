@@ -1,5 +1,10 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
+type TextItem = {
+  str: string;
+  hasEOL?: boolean;
+};
+
 export interface ParsedExam {
   date: Date;
   dayName: string;
@@ -31,9 +36,14 @@ export async function parseTimetablePDF(buffer: Buffer): Promise<ParseResult> {
     const data = new Uint8Array(buffer);
     const pdf = await pdfjsLib.getDocument({
       data,
-      useSystemFonts: true,
+      disableFontFace: true,
+      useSystemFonts: false,
       useWorkerFetch: false,
       isEvalSupported: false,
+      // Some timetable PDFs contain malformed TrueType hinting instructions.
+      // PDF.js can recover from these while extracting text, so don't turn
+      // recoverable font warnings into noisy upload logs.
+      verbosity: 0,
     }).promise;
 
     let allText = '';
@@ -42,8 +52,16 @@ export async function parseTimetablePDF(buffer: Buffer): Promise<ParseResult> {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
-        .map((item: any) => ('str' in item ? item.str : ''))
-        .join(' ');
+        .map(item => {
+          if (!('str' in item)) {
+            return '';
+          }
+
+          const textItem = item as TextItem;
+          return `${textItem.str}${textItem.hasEOL ? '\n' : ' '}`;
+        })
+        .join('')
+        .replace(/[ \t]+\n/g, '\n');
       allText += pageText + '\n';
     }
 

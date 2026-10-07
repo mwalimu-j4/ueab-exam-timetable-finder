@@ -7,6 +7,10 @@ import { errorMiddleware } from './middleware/error.middleware';
 
 const app: Application = express();
 
+// Trust proxy - required when behind Render's reverse proxy
+// This allows express-rate-limit to correctly identify client IPs from X-Forwarded-For header
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 

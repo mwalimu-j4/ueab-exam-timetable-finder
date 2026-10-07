@@ -1,8 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Disable worker in Node.js environment
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-
 export interface ParsedExam {
   date: Date;
   dayName: string;
@@ -32,7 +29,12 @@ export async function parseTimetablePDF(buffer: Buffer): Promise<ParseResult> {
 
   try {
     const data = new Uint8Array(buffer);
-    const pdf = await pdfjsLib.getDocument({ data, useSystemFonts: true }).promise;
+    const pdf = await pdfjsLib.getDocument({
+      data,
+      useSystemFonts: true,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+    }).promise;
 
     let allText = '';
 

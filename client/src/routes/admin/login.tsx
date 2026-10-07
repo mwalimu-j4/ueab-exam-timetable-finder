@@ -37,7 +37,7 @@ function AdminLogin() {
       setToken(response.token);
       toast({
         title: 'Login successful',
-        description: `Welcome back, ${response.admin.email}`,
+        description: `Welcome back, ${response.email}`,
       });
       
       // Redirect back to where the user came from, or default to timetables

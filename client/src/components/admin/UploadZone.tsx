@@ -49,9 +49,14 @@ export function UploadZone({ onFileAccepted, disabled }: UploadZoneProps) {
       </div>
 
       {acceptedFiles.length > 0 && (
-        <p className="mt-2 text-sm text-green-600">
-          Selected: {acceptedFiles[0].name}
-        </p>
+        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-sm font-medium text-green-800">
+            ✓ Selected: {acceptedFiles[0].name}
+          </p>
+          <p className="text-xs text-green-600 mt-1">
+            Size: {(acceptedFiles[0].size / 1024 / 1024).toFixed(2)} MB
+          </p>
+        </div>
       )}
 
       {fileRejections.length > 0 && (

@@ -12,12 +12,18 @@ import { setToken } from '@/lib/auth';
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/login',
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    return {
+      redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    };
+  },
   component: AdminLogin,
 });
 
 function AdminLogin() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,9 +37,12 @@ function AdminLogin() {
       setToken(response.token);
       toast({
         title: 'Login successful',
-        description: `Welcome back, ${response.email}`,
+        description: `Welcome back, ${response.admin.email}`,
       });
-      navigate({ to: '/admin/timetables' });
+      
+      // Redirect back to where the user came from, or default to timetables
+      const redirectTo = search.redirect || '/admin/timetables';
+      navigate({ to: redirectTo as any });
     } catch (error: any) {
       toast({
         title: 'Login failed',

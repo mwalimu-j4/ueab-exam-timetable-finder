@@ -11,10 +11,16 @@ const PORT = Number(process.env.PORT) || 3001;
 async function verifyDatabaseConnection(): Promise<void> {
   try {
     await prisma.$connect();
+  } catch (error) {
+    console.error("❌ PostgreSQL connection failed (network/auth error):", error);
+    process.exit(1);
+  }
+
+  try {
     await prisma.$queryRaw`SELECT 1`;
     console.log("✅ PostgreSQL connected successfully");
   } catch (error) {
-    console.error("❌ PostgreSQL connection failed:", error);
+    console.error("❌ PostgreSQL query failed (connection established but query error):", error);
     process.exit(1);
   }
 }
@@ -49,7 +55,4 @@ async function startServer(): Promise<void> {
 }
 
 // Start the server
-startServer().catch((error) => {
-  console.error('Failed to start server:', error);
-  process.exit(1);
-});
+startServer();

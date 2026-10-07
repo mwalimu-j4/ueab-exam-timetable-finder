@@ -48,7 +48,20 @@ export default {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))'
-        }
+        },
+        brand: {
+          violet: '#8A3FD8',
+          pink: '#C45AAA',
+          coral: '#E8786B'
+        },
+        ink: '#1F1535',
+        surface: '#FAF7FF'
+      },
+      backgroundImage: {
+        'brand-gradient': 'linear-gradient(135deg, #8A3FD8 0%, #C45AAA 55%, #E8786B 100%)'
+      },
+      boxShadow: {
+        card: '0 10px 30px rgba(138,63,216,0.12)'
       },
       borderRadius: {
         lg: 'var(--radius)',

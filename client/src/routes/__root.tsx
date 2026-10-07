@@ -3,24 +3,23 @@ import { Toaster } from '@/components/ui/toaster';
 
 export const Route = createRootRoute({
   component: () => (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b">
+    <div className="min-h-screen bg-surface dark:bg-[#140E24]">
+      <nav className="bg-white dark:bg-[#1E1633] border-b border-black/5 shadow-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-xl font-bold text-primary">
+          <Link to="/" className="text-xl font-bold bg-brand-gradient bg-clip-text text-transparent">
             UEAB Exam Timetable Finder
           </Link>
           <div className="flex gap-4">
             <Link
               to="/"
-              className="text-sm font-medium transition-colors hover:text-primary"
-              activeProps={{ className: 'text-primary' }}
+              className="text-sm font-medium transition-colors hover:text-[#8A3FD8]"
+              activeProps={{ className: 'text-[#8A3FD8] border-b-2 border-[#8A3FD8]' }}
             >
               Search
             </Link>
             <Link
               to="/admin/login"
-              className="text-sm font-medium transition-colors hover:text-primary"
-              activeProps={{ className: 'text-primary' }}
+              className="text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-200"
             >
               Admin
             </Link>

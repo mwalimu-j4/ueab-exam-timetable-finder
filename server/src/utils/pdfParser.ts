@@ -1,9 +1,7 @@
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
+import * as pdfjsLib from 'pdfjs-dist';
 
 // Disable worker in Node.js environment
-if (typeof pdfjsLib.GlobalWorkerOptions !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-}
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 export interface ParsedExam {
   date: Date;

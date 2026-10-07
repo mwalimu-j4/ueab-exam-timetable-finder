@@ -7,3 +7,5 @@ Thumbs.db
 .pnpm-store/
 coverage/
 .agents/
+prisma/seed.js
+prisma/seed.js.map

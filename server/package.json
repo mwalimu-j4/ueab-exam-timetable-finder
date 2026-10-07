@@ -9,9 +9,11 @@
     "start": "node dist/server.js",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:prod": "node -r dotenv/config prisma/seed.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "postbuild": "tsc prisma/seed.ts --outDir prisma --module commonjs --moduleResolution node --esModuleInterop"
   },
   "keywords": [],
   "author": "",

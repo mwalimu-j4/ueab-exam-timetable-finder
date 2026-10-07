@@ -7,12 +7,16 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.SEED_ADMIN_EMAIL || 'admin@ueab.ac.ke';
-  const password = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
 
   if (!email || !password) {
-    throw new Error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set');
+    console.log('⚠️  ADMIN_EMAIL and ADMIN_PASSWORD not set, skipping admin seed');
+    console.log('   Set these environment variables to create an admin user');
+    return;
   }
+
+  console.log('🌱 Seeding admin user...');
 
   const passwordHash = await bcrypt.hash(password, 10);
 
@@ -25,12 +29,13 @@ async function main() {
     },
   });
 
-  console.log('Admin user created/updated:', admin.email);
+  console.log('✅ Admin user created/updated:', admin.email);
+  console.log('🔒 You can now remove ADMIN_EMAIL and ADMIN_PASSWORD from environment variables');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

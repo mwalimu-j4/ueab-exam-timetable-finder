@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: ueab-timetable-backend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && pnpm install --frozen-lockfile && pnpm prisma:generate && pnpm build
+    startCommand: cd server && pnpm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000

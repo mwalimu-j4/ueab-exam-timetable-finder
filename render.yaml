@@ -4,8 +4,9 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: cd server && pnpm install --frozen-lockfile && pnpm prisma:generate && pnpm build && pnpm db:push && pnpm db:seed:prod
-    startCommand: cd server && pnpm start
+    rootDir: server
+    buildCommand: pnpm install --frozen-lockfile && pnpm prisma:generate && pnpm build && pnpm db:push && pnpm db:seed:prod
+    startCommand: pnpm start
     envVars:
       - key: NODE_VERSION
         value: 20.11.0

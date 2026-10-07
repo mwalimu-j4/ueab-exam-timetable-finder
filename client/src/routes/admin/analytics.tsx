@@ -25,10 +25,17 @@ import { Users, Search, FileDown, Calendar } from 'lucide-react';
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/analytics',
-  beforeLoad: () => {
+  beforeLoad: ({ location }) => {
     if (!isAuthenticated()) {
-      throw redirect({ to: '/admin/login' });
+      console.log('Not authenticated, redirecting to login from analytics');
+      throw redirect({ 
+        to: '/admin/login',
+        search: {
+          redirect: location.href,
+        },
+      });
     }
+    console.log('Authenticated, allowing access to analytics');
   },
   component: AnalyticsPage,
 });

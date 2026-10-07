@@ -31,10 +31,17 @@ import type { UploadResponse } from '@/types/api.types';
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/timetables',
-  beforeLoad: () => {
+  beforeLoad: ({ location }) => {
     if (!isAuthenticated()) {
-      throw redirect({ to: '/admin/login' });
+      console.log('Not authenticated, redirecting to login');
+      throw redirect({ 
+        to: '/admin/login',
+        search: {
+          redirect: location.href,
+        },
+      });
     }
+    console.log('Authenticated, allowing access to timetables');
   },
   component: TimetablesPage,
 });
@@ -65,6 +72,7 @@ function TimetablesPage() {
   });
 
   const handleFileAccepted = (file: File) => {
+    console.log('File accepted:', file.name, file.size, file.type);
     setSelectedFile(file);
   };
 
@@ -255,6 +263,17 @@ function TimetablesPage() {
 
           {!uploadResult && (
             <>
+              {selectedFile && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-800">
+                    <strong>Selected file:</strong> {selectedFile.name}
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              )}
+              
               <Button
                 onClick={handleUpload}
                 disabled={!selectedFile || !name.trim() || isUploading}

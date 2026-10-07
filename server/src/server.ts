@@ -4,7 +4,8 @@ dotenv.config();
 import app from './app';
 import { prisma } from './services/prisma';
 
-const PORT = process.env.PORT || 3001;
+// Use Render's PORT environment variable, fallback to 3001 for local development
+const PORT = Number(process.env.PORT) || 3001;
 
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -6,9 +6,11 @@ import { ResultCard } from '@/components/search/ResultCard';
 import { MyExamsSheet } from '@/components/search/MyExamsSheet';
 import { EmptyState } from '@/components/search/EmptyState';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { RatingDialog } from '@/components/rating/RatingDialog';
 import { useExamSearch } from '@/hooks/useExamSearch';
 import { useSavedExams } from '@/hooks/useSavedExams';
 import { useVisitTracker } from '@/hooks/useVisitTracker';
+import { useRatingPrompt } from '@/hooks/useRatingPrompt';
 import { apiClient } from '@/lib/api';
 import { SUPPORT_PHONE_DISPLAY, WHATSAPP_LINK } from '@/lib/constants';
 import type { TimetableVersion } from '@/types/api.types';
@@ -24,7 +26,9 @@ function Index() {
   const { results, loading, error } = useExamSearch(query);
   const { saved, save, remove, isSaved, clashes } = useSavedExams();
   const { trackEvent } = useVisitTracker();
+  const { shouldShow, markAsUsed, submitRating, dismissLater } = useRatingPrompt();
   const [activeVersionDate, setActiveVersionDate] = useState<string | undefined>();
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
 
   // Fire SEARCH event 1 second after user stops typing
   useEffect(() => {
@@ -34,6 +38,24 @@ function Index() {
     }, 1000);
     return () => clearTimeout(timer);
   }, [query, trackEvent]);
+
+  // Mark as used when user searches and gets results
+  useEffect(() => {
+    if (results.length > 0) {
+      markAsUsed();
+    }
+  }, [results, markAsUsed]);
+
+  // Show rating dialog when appropriate
+  useEffect(() => {
+    if (shouldShow) {
+      // Delay showing by 2 seconds so it doesn't interrupt immediately
+      const timer = setTimeout(() => {
+        setShowRatingDialog(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldShow]);
 
   // Fetch active timetable version date for footer
   useEffect(() => {
@@ -46,6 +68,11 @@ function Index() {
   }, []);
 
   const handleChipClick = (chip: string) => setQuery(chip);
+
+  const handleSaveExam = (exam: any) => {
+    save(exam);
+    markAsUsed();
+  };
 
   const showIdle = !query || query.trim().length < 2;
   const showLoading = !showIdle && loading;
@@ -72,7 +99,7 @@ function Index() {
                 <ResultCard
                   exam={exam}
                   isSaved={isSaved(exam.id)}
-                  onToggleSave={save}
+                  onToggleSave={handleSaveExam}
                 />
               </div>
             ))}
@@ -108,6 +135,15 @@ function Index() {
         clashes={clashes}
         onRemove={remove}
         activeVersionDate={activeVersionDate}
+        onDownload={markAsUsed}
+      />
+      
+      {/* Rating Dialog */}
+      <RatingDialog
+        open={showRatingDialog}
+        onOpenChange={setShowRatingDialog}
+        onSubmit={submitRating}
+        onDismiss={dismissLater}
       />
     </div>
   );

@@ -10,14 +10,16 @@ interface MyExamsSheetProps {
   clashes: Array<[Exam, Exam]>;
   onRemove: (id: string) => void;
   activeVersionDate?: string;
+  onDownload?: () => void;
 }
 
-export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate }: MyExamsSheetProps) {
+export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate, onDownload }: MyExamsSheetProps) {
   const [open, setOpen] = useState(false);
 
   if (saved.length === 0) return null;
 
   const handleDownloadPDF = () => {
+    onDownload?.();
     // Generate a branded text download with exam details
     const lines = [
       '═══════════════════════════════════════════════',
@@ -66,6 +68,7 @@ export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate }: My
   };
 
   const handleDownloadICS = () => {
+    onDownload?.();
     // Generate a .ics file with VEVENT entries
     const lines = [
       'BEGIN:VCALENDAR',

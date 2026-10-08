@@ -1,6 +1,6 @@
-import { Calendar, Clock, MapPin, Check, Plus, User, Users } from 'lucide-react';
+import { Clock, MapPin, Check, Plus, User, Users } from 'lucide-react';
 import type { Exam } from '@/types/api.types';
-import { format } from 'date-fns';
+import { formatExamDate, formatExamTime, getDayBadge } from '@/utils/dateFormat';
 import { Badge } from '@/components/ui/badge';
 
 interface ResultCardProps {
@@ -9,77 +9,77 @@ interface ResultCardProps {
   onToggleSave: (exam: Exam) => void;
 }
 
-function formatExamTime(start: string, end: string): string {
-  // Format as 12-hour time (e.g., "2:00 PM - 4:00 PM")
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
-  return `${formatTime(start)} - ${formatTime(end)}`;
-}
-
 export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
-  // Format date with weekday (e.g., "Friday, 15 December 2023")
-  const formattedDate = format(new Date(exam.date), 'EEEE, d MMMM yyyy');
-  
+  const dayBadge = getDayBadge(exam.date);
+
+  const badgeVariantClass = {
+    today: 'bg-[#E8786B] text-white',
+    tomorrow: 'bg-[#C45AAA] text-white',
+    soon: 'bg-[#8A3FD8]/20 text-[#8A3FD8]',
+  };
+
   // Safely format venue (handle null building/venue)
   const venueText = [exam.building, exam.venue].filter(Boolean).join(' - ') || 'Venue TBA';
 
   return (
-    <div className="bg-white dark:bg-[#1E1633] rounded-2xl shadow-card p-5 animate-fadeIn hover:shadow-xl hover:-translate-y-1 transition-all duration-200">
-      {/* Gradient badge for course code */}
-      <div className="inline-block mb-3">
-        <div className="bg-brand-gradient px-4 py-2 rounded-lg">
-          <h3 className="text-white font-bold text-lg">{exam.code}</h3>
+    <div className="bg-white dark:bg-[#1E1633] rounded-2xl shadow-card hover:shadow-xl transition-shadow duration-200 border border-gray-100 dark:border-gray-800 p-5 sm:p-6 animate-fadeIn">
+      {/* Top row: code badge + day badge */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="inline-block bg-brand-gradient text-white px-4 py-1.5 rounded-full font-bold text-base">
+          {exam.code}
         </div>
+        {dayBadge.variant && (
+          <Badge className={`${badgeVariantClass[dayBadge.variant]} text-xs font-semibold px-3 py-1`}>
+            {dayBadge.label}
+          </Badge>
+        )}
       </div>
 
-      {/* Title - bold and wrapping */}
-      <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 leading-snug break-words">
+      {/* Title */}
+      <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 leading-snug">
         {exam.title}
-      </p>
+      </h3>
 
-      {/* Icon rows */}
+      {/* Info rows with icons */}
       <div className="space-y-2.5 mb-4">
-        {/* Date with weekday */}
-        <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-          <Calendar className="h-4 w-4 flex-shrink-0 text-[#7C3AED]" />
-          <span className="break-words">{formattedDate}</span>
+        {/* Date */}
+        <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+          <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center mt-0.5">
+            📅
+          </div>
+          <span className="flex-1">{formatExamDate(exam.date)}</span>
         </div>
 
-        {/* Time in 12-hour format */}
-        <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-          <Clock className="h-4 w-4 flex-shrink-0 text-[#7C3AED]" />
-          <span>{formatExamTime(exam.start, exam.end)}</span>
+        {/* Time */}
+        <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+          <Clock className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{formatExamTime(exam.start, exam.end)}</span>
         </div>
 
         {/* Venue */}
-        <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-          <MapPin className="h-4 w-4 flex-shrink-0 text-[#7C3AED]" />
-          <span className="break-words">{venueText}</span>
+        <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+          <MapPin className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{venueText}</span>
         </div>
 
-        {/* Instructor (only if present) */}
+        {/* Instructor (if present) */}
         {exam.instructor && (
-          <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-            <User className="h-4 w-4 flex-shrink-0 text-[#7C3AED]" />
-            <span className="break-words">{exam.instructor}</span>
+          <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+            <User className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <span className="flex-1">{exam.instructor}</span>
           </div>
         )}
 
-        {/* Student count (only if present and > 0) */}
+        {/* Student count (if present and > 0) */}
         {exam.students && exam.students > 0 && (
-          <div className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-            <Users className="h-4 w-4 flex-shrink-0 text-[#7C3AED]" />
-            <span>{exam.students} student{exam.students !== 1 ? 's' : ''}</span>
+          <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+            <Users className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <span className="flex-1">{exam.students} student{exam.students !== 1 ? 's' : ''}</span>
           </div>
         )}
       </div>
 
-      {/* Option chip (only if not Main) */}
+      {/* Option badge (only if not Main) */}
       {exam.option && exam.option !== 'Main' && (
         <div className="mb-4">
           <Badge variant="secondary" className="text-xs font-medium">
@@ -88,28 +88,28 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
         </div>
       )}
 
-      {/* Save/Saved button with 44px tap target */}
+      {/* Save/Saved button */}
       <button
         onClick={() => onToggleSave(exam)}
         className={`
-          w-full min-h-[44px] px-4 py-2.5 rounded-xl font-medium transition-all duration-200
+          w-full min-h-[48px] px-4 py-3 rounded-xl font-semibold transition-all duration-200
           ${
             isSaved
-              ? 'bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 scale-100'
-              : 'bg-brand-gradient text-white hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'
+              ? 'bg-[#8A3FD8]/10 text-[#8A3FD8] hover:bg-[#8A3FD8]/20'
+              : 'bg-brand-gradient text-white hover:brightness-110 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98]'
           }
         `}
         aria-label={isSaved ? `Remove ${exam.code} from saved exams` : `Save ${exam.code} to your exams`}
       >
         {isSaved ? (
           <span className="flex items-center justify-center gap-2">
-            <Check className="h-4 w-4" />
+            <Check className="h-5 w-5" />
             Saved
           </span>
         ) : (
           <span className="flex items-center justify-center gap-2">
-            <Plus className="h-4 w-4" />
-            Save
+            <Plus className="h-5 w-5" />
+            Save Exam
           </span>
         )}
       </button>

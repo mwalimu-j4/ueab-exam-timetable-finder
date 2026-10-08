@@ -1,15 +1,17 @@
 import { createRoute, Link, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, subDays } from 'date-fns';
+import { format, subDays, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { Route as rootRoute } from '../__root';
 import { isAuthenticated } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { getAnalytics } from '@/services/admin.service';
+import { getRatingSummary } from '@/services/rating.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -20,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import { StatCard } from '@/components/admin/StatCard';
 import { AnalyticsChart } from '@/components/admin/AnalyticsChart';
-import { Users, Search, FileDown, Calendar } from 'lucide-react';
+import { Users, Search, FileDown, Calendar, Star } from 'lucide-react';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -258,6 +260,138 @@ function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Student Feedback */}
+      <StudentFeedback days={appliedTo === today ? 30 : Math.round(differenceInDays(new Date(appliedTo), new Date(appliedFrom)))} />
     </div>
+  );
+}
+
+function StudentFeedback({ days }: { days: number }) {
+  const { data: ratings, isLoading } = useQuery({
+    queryKey: ['ratings-summary', days],
+    queryFn: () => getRatingSummary(days),
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Student Feedback</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground py-8">Loading feedback...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!ratings || ratings.total === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Student Feedback</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground py-8">
+            No ratings yet. Students will be able to rate their experience soon!
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Render filled, half, and empty stars
+  const renderStars = (average: number) => {
+    const stars = [];
+    const fullStars = Math.floor(average);
+    const hasHalfStar = average % 1 >= 0.5;
+
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<Star key={`full-${i}`} className="h-5 w-5 fill-yellow-400 text-yellow-400" />);
+    }
+    if (hasHalfStar) {
+      stars.push(
+        <div key="half" className="relative">
+          <Star className="h-5 w-5 text-yellow-400" />
+          <Star className="h-5 w-5 fill-yellow-400 text-yellow-400 absolute top-0 left-0" style={{ clipPath: 'inset(0 50% 0 0)' }} />
+        </div>
+      );
+    }
+    const emptyStars = 5 - Math.ceil(average);
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<Star key={`empty-${i}`} className="h-5 w-5 text-gray-300" />);
+    }
+    return stars;
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Student Feedback</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Average rating */}
+        <div className="text-center">
+          <div className="text-5xl font-bold text-[#8A3FD8] mb-2">{ratings.average.toFixed(1)}</div>
+          <div className="flex items-center justify-center gap-1 mb-2">
+            {renderStars(ratings.average)}
+          </div>
+          <p className="text-sm text-muted-foreground">{ratings.total} rating{ratings.total !== 1 ? 's' : ''}</p>
+        </div>
+
+        {/* Distribution bars */}
+        <div className="space-y-2">
+          <h4 className="font-semibold text-sm">Rating Distribution</h4>
+          {[5, 4, 3, 2, 1].map(stars => {
+            const dist = ratings.distribution.find(d => d.stars === stars);
+            const count = dist?.count || 0;
+            const percentage = ratings.total > 0 ? (count / ratings.total) * 100 : 0;
+            
+            return (
+              <div key={stars} className="flex items-center gap-2">
+                <span className="text-sm w-12">{stars} ⭐</span>
+                <div className="flex-1 h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-yellow-400 transition-all duration-300"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+                <span className="text-sm w-12 text-right text-muted-foreground">{count}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Recent comments */}
+        {ratings.recentComments.length > 0 && (
+          <div>
+            <h4 className="font-semibold text-sm mb-3">Recent Comments</h4>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {ratings.recentComments.map((comment, idx) => (
+                <div key={idx} className="border dark:border-gray-700 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1">
+                      {[...Array(comment.stars)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {comment.userAgentType && (
+                        <Badge variant="secondary" className="text-xs">
+                          {comment.userAgentType}
+                        </Badge>
+                      )}
+                      <span>{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{comment.comment}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

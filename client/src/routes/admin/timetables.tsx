@@ -77,7 +77,10 @@ function TimetablesPage() {
   };
 
   const handleUpload = async () => {
-    if (isUploading) return;
+    if (isUploading) {
+      console.log('Upload already in progress, skipping duplicate request');
+      return;
+    }
 
     if (!selectedFile || !name.trim()) {
       toast({
@@ -101,9 +104,11 @@ function TimetablesPage() {
         description: `Parsed ${result.rowCount} exams`,
       });
     } catch (error: any) {
+      console.error('Upload error:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to upload timetable';
       toast({
         title: 'Upload failed',
-        description: error.response?.data?.error || 'Failed to upload timetable',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -265,12 +270,12 @@ function TimetablesPage() {
 
           {!uploadResult && (
             <>
-<Button
+              <Button
                 onClick={handleUpload}
                 disabled={!selectedFile || !name.trim() || isUploading}
                 className="w-full"
               >
-                {isUploading ? 'Uploading...' : 'Upload'}
+                {isUploading ? 'Processing...' : 'Upload'}
               </Button>
 
               {isUploading && (
@@ -281,7 +286,9 @@ function TimetablesPage() {
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
-                  <p className="text-sm text-center text-gray-600">{uploadProgress}%</p>
+                  <p className="text-sm text-center text-gray-600">
+                    {uploadProgress < 100 ? `Uploading... ${uploadProgress}%` : 'Processing PDF, this may take up to a minute...'}
+                  </p>
                 </div>
               )}
             </>

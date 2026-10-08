@@ -20,14 +20,10 @@ export function UploadZone({ onFileAccepted, disabled }: UploadZoneProps) {
     maxSize: 15 * 1024 * 1024, // 15MB
     multiple: false,
     disabled,
-    onDropAccepted: async (files) => {
+    onDropAccepted: (files) => {
       if (files.length > 0) {
-        const file = files[0];
-        const buffer = await file.arrayBuffer();
-        onFileAccepted(new File([buffer], file.name, {
-          type: file.type || 'application/pdf',
-          lastModified: Date.now(),
-        }));
+        // Pass the file directly without re-wrapping to avoid double processing
+        onFileAccepted(files[0]);
       }
     },
   });

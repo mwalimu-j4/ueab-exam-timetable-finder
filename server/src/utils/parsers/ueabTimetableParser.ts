@@ -26,7 +26,7 @@ const DAY_NAMES: Record<string, string> = {
   Sun: 'Sunday',
 };
 
-export const KNOWN_BUILDING_CODES = [
+export const KNOWN_BUILDING_CODES = new Set([
   'HUM',
   'AUD',
   'AMP',
@@ -37,11 +37,13 @@ export const KNOWN_BUILDING_CODES = [
   'SOI',
   'Homec',
   'Library',
-];
+]);
+
+const BUILDING_CODES_ARRAY = Array.from(KNOWN_BUILDING_CODES);
 
 const HEADER_TEXT = '2025/2026.2 FINAL EXAM TIMETABLE READ CAREFULLY';
-const OPTION_PATTERN = /(Inter Session \d|Blended Online|Group [A-Z]|Main)/;
-const HEAD = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*,\s*(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}:\d{2}\s?[AP]M)\s+(\d{1,2}:\d{2}\s?[AP]M)\s+([A-Z]{3,4}\d{3}[A-Z]?)\s+(.+)$/i;
+const OPTIONS = ['Inter Session 1', 'Inter Session 2', 'Blended Online', 'Group A', 'Group B', 'Group C', 'Group D', 'Main'];
+const TITLE_PREFIXES = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.', 'Mr', 'Mrs', 'Ms', 'Dr', 'Prof'];
 
 export function parseUeabTimetable(text: string): UeabParseResult {
   const lines = prepareRows(text);
@@ -50,6 +52,12 @@ export function parseUeabTimetable(text: string): UeabParseResult {
   const seen = new Set<string>();
 
   for (const line of lines) {
+    // Safety: skip lines over 400 characters
+    if (line.length > 400) {
+      unparsed.push(line.slice(0, 100) + '... [line too long]');
+      continue;
+    }
+
     const exam = parseUeabLine(line);
     if (!exam) {
       if (line && !isNoiseLine(line)) unparsed.push(line);
@@ -86,22 +94,51 @@ export function parseUeabLine(rawLine: string): ParsedExam | null {
   const line = stripGluedHeader(normalizeUeabLine(rawLine));
   if (!line || isNoiseLine(line)) return null;
 
-  const match = line.match(HEAD);
-  if (!match) return null;
+  // TOKEN WALKING - linear parse, no backtracking regexes
+  const tokens = line.split(/\s+/);
+  if (tokens.length < 8) return null;
 
-  const [, dayAbbrev, day, month, year, startDisplay, endDisplay, code, tail] = match;
+  // Check first token is a weekday
+  const dayToken = tokens[0].replace(/,$/, '');
+  if (!DAY_NAMES[capitalizeDay(dayToken)]) return null;
+
+  // Parse date (tokens[1]): DD-MM-YYYY with flexible spacing
+  const dateMatch = tokens[1].match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (!dateMatch) return null;
+  const [, day, month, year] = dateMatch;
   const date = makeUtcDate(Number(year), Number(month), Number(day));
-  const start = normalizeTime(startDisplay);
-  const end = normalizeTime(endDisplay);
-  const fields = parseTail(tail);
+  if (!date) return null;
 
-  if (!date || !start || !end || !code || !fields.title) return null;
+  // Parse times (tokens[2] and tokens[3]): HH:MM AM/PM
+  const startTime = normalizeTime(tokens[2] + (tokens[3] && /^[AP]M$/i.test(tokens[3]) ? ' ' + tokens[3] : ''));
+  let timeEndIndex = 3;
+  if (tokens[3] && /^[AP]M$/i.test(tokens[3])) timeEndIndex = 4;
+  
+  const endTime = normalizeTime(tokens[timeEndIndex] + (tokens[timeEndIndex + 1] && /^[AP]M$/i.test(tokens[timeEndIndex + 1]) ? ' ' + tokens[timeEndIndex + 1] : ''));
+  if (!startTime) return null;
+  
+  let codeIndex = timeEndIndex;
+  if (tokens[timeEndIndex + 1] && /^[AP]M$/i.test(tokens[timeEndIndex + 1])) codeIndex = timeEndIndex + 2;
+  else codeIndex = timeEndIndex + 1;
+
+  if (!endTime) return null;
+
+  // Parse course code (next token): 3-4 letters + 3 digits + optional letter
+  if (codeIndex >= tokens.length) return null;
+  const code = tokens[codeIndex];
+  if (!/^[A-Z]{3,4}\d{3}[A-Z]?$/i.test(code)) return null;
+
+  // Everything after code is the "tail"
+  const tail = tokens.slice(codeIndex + 1).join(' ');
+  const fields = parseTailTokens(tokens.slice(codeIndex + 1));
+
+  if (!fields.title) return null;
 
   return {
     date,
-    dayName: DAY_NAMES[capitalizeDay(dayAbbrev)] || dayAbbrev,
-    start,
-    end,
+    dayName: DAY_NAMES[capitalizeDay(dayToken)] || dayToken,
+    start: startTime,
+    end: endTime,
     code: code.toUpperCase(),
     title: fields.title,
     option: fields.option,
@@ -116,8 +153,16 @@ export function parseUeabLine(rawLine: string): ParsedExam | null {
 function prepareRows(text: string): string[] {
   const rows: string[] = [];
   let pending = '';
+  let iterationCount = 0;
+  const MAX_ITERATIONS = 100000; // Safety limit
 
   for (const raw of text.split(/\r?\n/)) {
+    iterationCount++;
+    if (iterationCount > MAX_ITERATIONS) {
+      console.error('[parseUeab] MAX_ITERATIONS exceeded in prepareRows');
+      break;
+    }
+
     const line = stripGluedHeader(normalizeUeabLine(raw));
     if (!line || isNoiseLine(line)) continue;
 
@@ -125,7 +170,13 @@ function prepareRows(text: string): string[] {
       if (pending) rows.push(pending);
       pending = line;
     } else if (pending) {
+      // Join wrapped lines - index ALWAYS advances
       pending = normalizeUeabLine(pending + ' ' + line);
+      if (pending.length > 600) {
+        // Safety: if joined line gets too long, flush it
+        rows.push(pending);
+        pending = '';
+      }
     } else {
       rows.push(line);
     }
@@ -136,13 +187,14 @@ function prepareRows(text: string): string[] {
 }
 
 function startsDataRow(line: string): boolean {
+  // Simple bounded regex check
   return /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*,\s*\d{1,2}-\d{1,2}-\d{4}\b/i.test(line);
 }
 
 function isNoiseLine(line: string): boolean {
   return line.includes('FINAL EXAM TIMETABLE READ CAREFULLY')
-    || /^Date\s+Start Time/i.test(line)
-    || /^(No\. of|student|s|Row)$/i.test(line);
+    || /^Date\s+Start/i.test(line)
+    || /^(No\.|student|Row)$/i.test(line);
 }
 
 function stripGluedHeader(line: string): string {
@@ -150,64 +202,139 @@ function stripGluedHeader(line: string): string {
   return headerIndex === -1 ? line : normalizeUeabLine(line.slice(0, headerIndex));
 }
 
-function parseTail(value: string): TailFields {
-  let text = normalizeUeabLine(value);
+// TOKEN WALKING PARSER for tail fields - replaces regex-heavy parseTail
+function parseTailTokens(tokens: string[]): TailFields {
+  if (tokens.length === 0) return { title: 'Unknown' };
+
+  // Pop trailing tokens from END: student count and row spec
   let students: number | undefined;
   let rowSpec: string | undefined;
+  let workingTokens = [...tokens];
 
-  const studentMatch = text.match(/\s(\d{1,4})$/);
-  if (studentMatch) {
-    students = Number(studentMatch[1]);
-    text = text.slice(0, studentMatch.index).trim();
+  // Check last token for student count (pure digits, 1-4 digits)
+  if (workingTokens.length > 0 && /^\d{1,4}$/.test(workingTokens[workingTokens.length - 1])) {
+    students = Number(workingTokens.pop()!);
   }
 
-  const rowSpecMatch = text.match(/\s([\d,\.\s…]+)$/);
-  if (rowSpecMatch && /\d/.test(rowSpecMatch[1])) {
-    rowSpec = normalizeUeabLine(rowSpecMatch[1]);
-    text = text.slice(0, rowSpecMatch.index).trim();
-  }
-
-  const optionMatch = findOption(text);
-  if (!optionMatch) return { title: text, students, rowSpec };
-
-  const title = text.slice(0, optionMatch.index).trim();
-  const option = optionMatch.option;
-  const rest = text.slice(optionMatch.index + option.length).trim();
-  const buildingMatch = findBuilding(rest);
-
-  if (!buildingMatch) return { title, option, instructor: rest || undefined, students, rowSpec };
-
-  const instructor = rest.slice(0, buildingMatch.index).trim() || undefined;
-  const rawVenueText = rest.slice(buildingMatch.index).trim();
-  const venueParts = parseVenue(rawVenueText, buildingMatch.code);
-
-  return { title, option, instructor, building: venueParts.building, venue: venueParts.venue, rawVenueText, rowSpec, students };
-}
-
-function findOption(text: string): { option: string; index: number } | null {
-  const matches = Array.from(text.matchAll(new RegExp(OPTION_PATTERN, 'g')));
-  for (const match of matches) {
-    if (match.index === undefined) continue;
-    const after = text.slice(match.index + match[0].length).trim();
-    if (/^(Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Prof\.?)\s+/i.test(after) || /^[A-Z][A-Z'.,-]+(?:\s+[A-Z][A-Z'.,-]+)*/.test(after)) {
-      return { option: match[0], index: match.index };
+  // Check new last token for row spec (contains digits, dots, commas)
+  if (workingTokens.length > 0 && /[\d.,…]+/.test(workingTokens[workingTokens.length - 1])) {
+    const maybeRow = workingTokens[workingTokens.length - 1];
+    if (/\d/.test(maybeRow) && !/^[A-Z]{2,}/.test(maybeRow)) {
+      rowSpec = workingTokens.pop()!;
     }
   }
 
-  const fallback = text.match(OPTION_PATTERN);
-  return fallback && fallback.index !== undefined ? { option: fallback[0], index: fallback.index } : null;
-}
+  // Find option by scanning tokens and checking suffix/prefix
+  let optionIndex = -1;
+  let option: string | undefined;
+  
+  for (let i = 0; i < workingTokens.length; i++) {
+    const token = workingTokens[i];
+    const next = workingTokens[i + 1] || '';
+    const prev = i > 0 ? workingTokens[i - 1] : '';
+    
+    // Check for multi-word options
+    if (token === 'Inter' && (next === 'Session' || next.startsWith('Session'))) {
+      const sessionNum = workingTokens[i + 2];
+      if (sessionNum === '1' || sessionNum === '2') {
+        option = 'Inter Session ' + sessionNum;
+        optionIndex = i;
+        workingTokens.splice(i, 3);
+        break;
+      }
+    } else if (token === 'Blended' && next === 'Online') {
+      option = 'Blended Online';
+      optionIndex = i;
+      workingTokens.splice(i, 2);
+      break;
+    } else if (token === 'Group' && /^[A-D]$/.test(next)) {
+      option = 'Group ' + next;
+      optionIndex = i;
+      workingTokens.splice(i, 2);
+      break;
+    } else if (token === 'Main' || prev.endsWith('Main')) {
+      // Handle glued "TITLEMain" cases
+      if (prev.endsWith('Main')) {
+        workingTokens[i - 1] = prev.slice(0, -4);
+        option = 'Main';
+        optionIndex = i - 1;
+      } else {
+        option = 'Main';
+        optionIndex = i;
+        workingTokens.splice(i, 1);
+      }
+      break;
+    }
+  }
 
-function findBuilding(text: string): { code: string; index: number } | null {
-  const known = KNOWN_BUILDING_CODES
-    .map(code => ({ code, index: text.search(new RegExp('\\b' + escapeRegex(code) + '\\b')) }))
-    .filter(item => item.index >= 0)
-    .sort((a, b) => a.index - b.index)[0];
+  // Find instructor (starts with title prefix)
+  let instructorStartIndex = -1;
+  let instructorEndIndex = -1;
+  
+  for (let i = 0; i < workingTokens.length; i++) {
+    const token = workingTokens[i];
+    if (TITLE_PREFIXES.some(prefix => token.startsWith(prefix))) {
+      instructorStartIndex = i;
+      // Instructor is uppercase name tokens until we hit building code
+      for (let j = i; j < workingTokens.length; j++) {
+        if (KNOWN_BUILDING_CODES.has(workingTokens[j])) {
+          instructorEndIndex = j - 1;
+          break;
+        }
+        // Stop at lowercase or special venue indicators
+        if (j > i && /^[a-z]/.test(workingTokens[j]) && !/^[A-Z]{2,}/.test(workingTokens[j])) {
+          instructorEndIndex = j - 1;
+          break;
+        }
+      }
+      if (instructorEndIndex === -1) instructorEndIndex = workingTokens.length - 1;
+      break;
+    }
+  }
 
-  if (known) return known;
+  let instructor: string | undefined;
+  if (instructorStartIndex !== -1) {
+    instructor = workingTokens.slice(instructorStartIndex, instructorEndIndex + 1).join(' ');
+  }
 
-  const generic = text.match(/\b([A-Z]{2,5})\b(?=\s+[A-Za-z])/);
-  return generic && generic.index !== undefined ? { code: generic[1], index: generic.index } : null;
+  // Find building code
+  let buildingIndex = -1;
+  let buildingCode: string | undefined;
+  
+  for (let i = instructorEndIndex + 1; i < workingTokens.length; i++) {
+    if (KNOWN_BUILDING_CODES.has(workingTokens[i])) {
+      buildingCode = workingTokens[i];
+      buildingIndex = i;
+      break;
+    }
+  }
+
+  // Parse venue
+  let building: string | undefined;
+  let venue: string | undefined;
+  let rawVenueText: string | undefined;
+
+  if (buildingIndex !== -1) {
+    rawVenueText = workingTokens.slice(buildingIndex).join(' ');
+    const parsed = parseVenue(rawVenueText, buildingCode!);
+    building = parsed.building;
+    venue = parsed.venue;
+  }
+
+  // Title is everything before instructor (or before building if no instructor)
+  let titleEndIndex = instructorStartIndex !== -1 ? instructorStartIndex - 1 : buildingIndex !== -1 ? buildingIndex - 1 : workingTokens.length - 1;
+  const title = workingTokens.slice(0, titleEndIndex + 1).join(' ').trim() || 'Unknown';
+
+  return {
+    title,
+    option,
+    instructor,
+    building,
+    venue,
+    rawVenueText,
+    rowSpec,
+    students,
+  };
 }
 
 function parseVenue(rawVenueText: string, code: string): { building?: string; venue?: string } {

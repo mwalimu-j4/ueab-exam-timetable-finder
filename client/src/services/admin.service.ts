@@ -26,9 +26,6 @@ export async function uploadTimetable(
   formData.append('name', name);
 
   const response = await apiClient.post<UploadResponse>('/api/admin/timetables/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
     onUploadProgress: (progressEvent) => {
       if (progressEvent.total && onProgress) {
         const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);

@@ -1,8 +1,8 @@
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
-const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-const apiKey = process.env.CLOUDINARY_API_KEY;
-const apiSecret = process.env.CLOUDINARY_API_SECRET;
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME;
+const apiKey = process.env.CLOUDINARY_API_KEY || process.env.CLOUDINARY_KEY;
+const apiSecret = process.env.CLOUDINARY_API_SECRET || process.env.CLOUDINARY_SECRET;
 
 if (cloudName && apiKey && apiSecret) {
   cloudinary.config({
@@ -15,14 +15,24 @@ if (cloudName && apiKey && apiSecret) {
 
 function assertConfigured(): void {
   if (!cloudName || !apiKey || !apiSecret) {
+    console.error('[upload] Cloudinary configuration missing', {
+      hasCloudName: Boolean(cloudName),
+      hasApiKey: Boolean(apiKey),
+      hasApiSecret: Boolean(apiSecret),
+    });
     throw new Error(
-      'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.'
+      'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME (or CLOUDINARY_NAME), CLOUDINARY_API_KEY (or CLOUDINARY_KEY), and CLOUDINARY_API_SECRET (or CLOUDINARY_SECRET).'
     );
   }
 }
 
 export function uploadTimetablePdf(buffer: Buffer, name: string): Promise<UploadApiResponse> {
   assertConfigured();
+  console.log('[upload] Cloudinary upload started', {
+    bytes: buffer.length,
+    fileName: name,
+    folder: 'ueab-timetables',
+  });
 
   const publicId = `timetable-${Date.now()}-${name
     .replace(/\.pdf$/i, '')
@@ -42,9 +52,18 @@ export function uploadTimetablePdf(buffer: Buffer, name: string): Promise<Upload
       },
       (error, result) => {
         if (error || !result) {
+          console.error('[upload] Cloudinary upload failed', {
+            message: error?.message || 'No upload result returned',
+            httpCode: error?.http_code,
+          });
           reject(new Error(`Cloudinary PDF upload failed: ${error?.message || 'No upload result returned'}`));
           return;
         }
+        console.log('[upload] Cloudinary upload completed', {
+          publicId: result.public_id,
+          bytes: result.bytes,
+          resourceType: result.resource_type,
+        });
         resolve(result);
       }
     );

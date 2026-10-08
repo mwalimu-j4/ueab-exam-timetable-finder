@@ -40,8 +40,17 @@ export async function login(req: Request, res: Response) {
 
 export async function uploadTimetable(req: Request, res: Response) {
   try {
+    console.log('[upload] timetable handler started', {
+      hasFile: Boolean(req.file),
+      fileName: req.file?.originalname,
+      mimeType: req.file?.mimetype,
+      bytes: req.file?.size,
+      name: req.body?.name,
+    });
+
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      console.error('[upload] rejected: no file found on request');
+      return res.status(400).json({ error: 'No file uploaded. Send the PDF in the "file" form field.' });
     }
 
     if (req.file.mimetype !== 'application/pdf') {
@@ -52,7 +61,9 @@ export async function uploadTimetable(req: Request, res: Response) {
       return res.status(400).json({ error: 'File size must not exceed 15MB' });
     }
 
+    console.log('[upload] PDF parsing started', { bytes: req.file.size });
     const { exams, unparsedLines } = await parseTimetablePDF(req.file.buffer);
+    console.log('[upload] PDF parsing completed', { exams: exams.length, unparsedLines: unparsedLines.length });
 
     if (exams.length === 0) {
       return res.status(400).json({ error: 'No valid exam entries found in PDF' });
@@ -101,6 +112,11 @@ export async function uploadTimetable(req: Request, res: Response) {
         unparsedLines,
         pdfUrl: version.pdfUrl,
       });
+      console.log('[upload] timetable upload completed', {
+        versionId: version.id,
+        rowCount: exams.length,
+        pdfUrl: version.pdfUrl,
+      });
     } catch (error) {
       try {
         await deleteTimetablePdf(cloudinaryUpload.public_id);
@@ -110,7 +126,7 @@ export async function uploadTimetable(req: Request, res: Response) {
       throw error;
     }
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('[upload] timetable upload failed', error);
     const message = error instanceof Error ? error.message : 'Upload failed';
     const status = message.startsWith('Cloudinary') ? 502 : 500;
     res.status(status).json({ error: message });

@@ -10,7 +10,7 @@ import { getAnalyticsController } from '../controllers/analytics.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { validateRequest } from '../middleware/validation.middleware';
 import { uploadRateLimit } from '../middleware/rateLimit.middleware';
-import { upload } from '../config/multer.config';
+import { parseTimetableUpload } from '../middleware/upload.middleware';
 import { loginSchema, analyticsQuerySchema } from '../validators/admin.validator';
 
 const router: IRouter = Router();
@@ -23,7 +23,7 @@ router.post(
   '/timetables/upload',
   authMiddleware,
   uploadRateLimit,
-  upload.single('file'),
+  parseTimetableUpload,
   uploadTimetable
 );
 

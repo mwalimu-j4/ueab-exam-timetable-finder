@@ -5,12 +5,16 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 apiClient.interceptors.request.use((config) => {
+  // Let the browser/Axios add the multipart boundary for FormData uploads.
+  // A fixed JSON content type makes Multer receive the fields but no file.
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type'];
+    delete config.headers['content-type'];
+  }
+
   const token = getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

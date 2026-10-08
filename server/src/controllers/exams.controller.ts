@@ -17,6 +17,11 @@ export async function searchExamsController(req: Request, res: Response) {
       session,
     });
 
+    // Prevent browser caching of search results
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     res.json(exams);
   } catch (error) {
     console.error('Search error:', error);

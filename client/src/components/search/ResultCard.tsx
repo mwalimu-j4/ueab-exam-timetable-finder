@@ -1,4 +1,4 @@
-import { Clock, MapPin, Check, Plus } from 'lucide-react';
+import { Clock, MapPin, Check, Plus, User, Users } from 'lucide-react';
 import type { Exam } from '@/types/api.types';
 import { formatExamDate, formatExamTime, getDayBadge } from '@/utils/dateFormat';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,9 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
     tomorrow: 'bg-[#C45AAA] text-white',
     soon: 'bg-[#8A3FD8]/20 text-[#8A3FD8]',
   };
+
+  // Safely format venue (handle null building/venue)
+  const venueText = [exam.building, exam.venue].filter(Boolean).join(' - ') || 'Venue TBA';
 
   return (
     <div className="bg-white dark:bg-[#1E1633] rounded-2xl shadow-card border-l-4 border-[#8A3FD8] p-5 animate-fadeIn">
@@ -40,10 +43,26 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
       </div>
 
       {/* Venue */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-3">
+      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-2">
         <MapPin className="h-4 w-4" />
-        <span>{exam.building} - {exam.venue}</span>
+        <span>{venueText}</span>
       </div>
+
+      {/* Instructor (if present) */}
+      {exam.instructor && (
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-2">
+          <User className="h-4 w-4" />
+          <span>{exam.instructor}</span>
+        </div>
+      )}
+
+      {/* Student count (if present and > 0) */}
+      {exam.students && exam.students > 0 && (
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-3">
+          <Users className="h-4 w-4" />
+          <span>{exam.students} student{exam.students !== 1 ? 's' : ''}</span>
+        </div>
+      )}
 
       {/* Option badge (only if not Main) */}
       {exam.option && exam.option !== 'Main' && (

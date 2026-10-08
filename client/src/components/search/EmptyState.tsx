@@ -29,7 +29,7 @@ export function EmptyState({ variant, onChipClick }: EmptyStateProps) {
       <div className="text-center py-12">
         <WifiOff className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
         <p className="text-gray-600 dark:text-gray-400 text-base">
-          Offline or connection error. Check your internet connection and try again.
+          Couldn't reach the server, please try again
         </p>
       </div>
     );

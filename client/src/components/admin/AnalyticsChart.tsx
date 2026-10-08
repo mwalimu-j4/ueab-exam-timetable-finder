@@ -15,8 +15,27 @@ interface AnalyticsChartProps {
 }
 
 export function AnalyticsChart({ data }: AnalyticsChartProps) {
-  // Handle undefined or empty data
-  if (!data || data.length === 0) {
+  // Comprehensive data validation
+  if (!data) {
+    console.warn('[AnalyticsChart] Data is undefined');
+    return (
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No visitor data available
+      </div>
+    );
+  }
+
+  if (!Array.isArray(data)) {
+    console.error('[AnalyticsChart] Data is not an array:', typeof data, data);
+    return (
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        Invalid data format
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    console.log('[AnalyticsChart] Data array is empty');
     return (
       <div className="h-[300px] flex items-center justify-center text-muted-foreground">
         No visitor data for selected range
@@ -24,24 +43,57 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
     );
   }
 
-  // Format data for chart with safe date handling
-  const chartData = data.map((item) => {
-    try {
-      const dateObj = parseISO(item.date);
-      return {
-        date: format(dateObj, 'MMM dd'),
-        fullDate: item.date,
-        count: item.count || 0,
-      };
-    } catch (error) {
-      // Fallback for invalid dates
-      return {
-        date: item.date || 'Invalid',
-        fullDate: item.date || '',
-        count: item.count || 0,
-      };
-    }
-  });
+  // Validate and transform data for Recharts
+  const chartData = data
+    .filter((item) => {
+      // Filter out invalid items
+      if (!item || typeof item !== 'object') {
+        console.warn('[AnalyticsChart] Invalid item:', item);
+        return false;
+      }
+      if (!item.date || typeof item.date !== 'string') {
+        console.warn('[AnalyticsChart] Invalid date:', item);
+        return false;
+      }
+      return true;
+    })
+    .map((item, index) => {
+      try {
+        // Parse and format date safely
+        const dateObj = parseISO(item.date);
+        if (isNaN(dateObj.getTime())) {
+          throw new Error('Invalid date');
+        }
+        
+        return {
+          date: format(dateObj, 'MMM dd'),
+          fullDate: item.date,
+          count: typeof item.count === 'number' ? item.count : 0,
+          index, // Unique key for React
+        };
+      } catch (error) {
+        console.warn('[AnalyticsChart] Date parsing error:', item.date, error);
+        // Return fallback with raw date
+        return {
+          date: item.date?.slice(5, 10) || `Day ${index + 1}`,
+          fullDate: item.date || '',
+          count: typeof item.count === 'number' ? item.count : 0,
+          index,
+        };
+      }
+    });
+
+  // Final validation - ensure we have valid chart data
+  if (!chartData || chartData.length === 0) {
+    console.warn('[AnalyticsChart] No valid chart data after transformation');
+    return (
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        Unable to display chart data
+      </div>
+    );
+  }
+
+  console.log('[AnalyticsChart] Rendering chart with', chartData.length, 'data points');
 
   return (
     <div className="h-[300px] w-full">
@@ -55,11 +107,13 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
             dataKey="date"
             tick={{ fontSize: 12 }}
             tickLine={false}
+            allowDataOverflow={false}
           />
           <YAxis 
             allowDecimals={false}
             tick={{ fontSize: 12 }}
             tickLine={false}
+            allowDataOverflow={false}
             label={{ 
               value: 'Visitors', 
               angle: -90, 
@@ -91,6 +145,7 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
             strokeWidth={2}
             dot={{ fill: '#8A3FD8', r: 3 }}
             activeDot={{ r: 5 }}
+            isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>

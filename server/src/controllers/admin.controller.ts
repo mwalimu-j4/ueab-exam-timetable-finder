@@ -8,7 +8,8 @@ import {
   getAllVersions,
   deleteVersion,
 } from '../services/timetable.service';
-import { parseTimetablePDF } from '../utils/pdfParser';
+import { extractTimetableText, parseTimetablePDF } from '../utils/pdfParser';
+import { normalizeUeabLine, parseUeabTimetable } from '../utils/parsers/ueabTimetableParser';
 import { deleteTimetablePdf, uploadTimetablePdf } from '../services/cloudinary.service';
 
 export async function login(req: Request, res: Response) {
@@ -62,11 +63,37 @@ export async function uploadTimetable(req: Request, res: Response) {
     }
 
     console.log('[upload] PDF parsing started', { bytes: req.file.size });
-    const { exams, unparsedLines } = await parseTimetablePDF(req.file.buffer);
+    let { exams, unparsedLines } = await parseTimetablePDF(req.file.buffer);
     console.log('[upload] PDF parsing completed', { exams: exams.length, unparsedLines: unparsedLines.length });
 
+    const rawText = await extractTimetableText(req.file.buffer);
+    const fallbackResult = parseUeabTimetable(rawText);
+
     if (exams.length === 0) {
-      return res.status(400).json({ error: 'No valid exam entries found in PDF' });
+      const rawLines = rawText.split(/\r?\n/).filter(line => line.trim().length > 0);
+      console.log('[upload] no exams parsed diagnostics', {
+        totalLineCount: rawLines.length,
+        firstRawUnparsedLines: unparsedLines.slice(0, 15).map(line => JSON.stringify(line)),
+        firstNormalizedLines: rawLines.slice(0, 5).map(normalizeUeabLine),
+      });
+    }
+
+    if (fallbackResult.exams.length > exams.length) {
+      console.log('[upload] fallback parser used', {
+        previousExams: exams.length,
+        fallbackExams: fallbackResult.exams.length,
+        fallbackUnparsed: fallbackResult.unparsed.length,
+      });
+      exams = fallbackResult.exams;
+      unparsedLines = fallbackResult.unparsed;
+    }
+
+    if (exams.length === 0) {
+      const debugUpload = process.env.NODE_ENV !== 'production' || process.env.ADMIN_DEBUG === 'true';
+      return res.status(400).json({
+        error: 'No valid exam entries found in PDF. The PDF text was extracted, but no timetable rows matched the supported UEAB formats.',
+        ...(debugUpload ? { sampleUnparsedLines: unparsedLines.slice(0, 5) } : {}),
+      });
     }
 
     const name = req.body.name || `Upload ${new Date().toISOString()}`;

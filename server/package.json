@@ -13,7 +13,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "postbuild": "tsc prisma/seed.ts --outDir prisma --module commonjs --moduleResolution node --esModuleInterop"
+    "postbuild": "tsc prisma/seed.ts --outDir prisma --module commonjs --moduleResolution node --esModuleInterop",
+    "test:ueab-parser": "tsx src/utils/parsers/ueabTimetableParser.test.ts"
   },
   "keywords": [],
   "author": "",

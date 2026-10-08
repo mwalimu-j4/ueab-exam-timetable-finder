@@ -27,42 +27,45 @@ export interface ParseResult {
 
 const OPTIONS = ['Main', 'Group A', 'Group B', 'Group C', 'Group D', 'Inter Session 1', 'Inter Session 2', 'Blended Online'];
 
+export async function extractTimetableText(buffer: Buffer): Promise<string> {
+  const data = new Uint8Array(buffer);
+  const pdf = await pdfjsLib.getDocument({
+    data,
+    disableFontFace: true,
+    useSystemFonts: false,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    verbosity: 0,
+  }).promise;
+
+  let allText = '';
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map(item => {
+        if (!('str' in item)) {
+          return '';
+        }
+
+        const textItem = item as TextItem;
+        return `${textItem.str}${textItem.hasEOL ? '\n' : ' '}`;
+      })
+      .join('')
+      .replace(/[ \t]+\n/g, '\n');
+    allText += pageText + '\n';
+  }
+
+  return allText;
+}
+
 export async function parseTimetablePDF(buffer: Buffer): Promise<ParseResult> {
   const exams: ParsedExam[] = [];
   const unparsedLines: string[] = [];
 
   try {
-    const data = new Uint8Array(buffer);
-    const pdf = await pdfjsLib.getDocument({
-      data,
-      disableFontFace: true,
-      useSystemFonts: false,
-      useWorkerFetch: false,
-      isEvalSupported: false,
-      // Some timetable PDFs contain malformed TrueType hinting instructions.
-      // PDF.js can recover from these while extracting text, so don't turn
-      // recoverable font warnings into noisy upload logs.
-      verbosity: 0,
-    }).promise;
-
-    let allText = '';
-
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map(item => {
-          if (!('str' in item)) {
-            return '';
-          }
-
-          const textItem = item as TextItem;
-          return `${textItem.str}${textItem.hasEOL ? '\n' : ' '}`;
-        })
-        .join('')
-        .replace(/[ \t]+\n/g, '\n');
-      allText += pageText + '\n';
-    }
+    const allText = await extractTimetableText(buffer);
 
     const lines = allText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 

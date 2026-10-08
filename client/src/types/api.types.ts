@@ -22,6 +22,20 @@ export interface TimetableVersion {
   rowCount: number;
   isActive: boolean;
   uploadedAt: string;
+  kind?: 'TENTATIVE' | 'FINAL';
+  label?: string | null;
+  publishedAt?: string | null;
+}
+
+export interface StudentExamItem {
+  id: string; code: string; option: string; isDone: boolean; doneAt: string | null;
+  changeFlag: 'CHANGED' | 'REMOVED' | null; suggestedOptions: string[];
+  before: { date?: string; start?: string; end?: string; building?: string | null; venue?: string | null } | null;
+  exam: Exam | null;
+}
+export interface StudentTimetable {
+  items: StudentExamItem[];
+  summary: { total: number; done: number; remaining: number; nextExam: StudentExamItem | null; activeVersion: { kind: string; label: string; publishedAt: string } | null };
 }
 
 export interface UploadResponse {
@@ -59,6 +73,9 @@ export interface Analytics {
   totalSearches: number;
   downloadsByType: Array<{ type: string; count: number }>;
   topQueries: Array<{ query: string; count: number }>;
+  studentsWithSavedTimetables?: number;
+  averageSavedExamsPerStudent?: number;
+  percentageMarkedDone?: number;
 }
 
 export type EventType = 'SEARCH' | 'DOWNLOAD_PDF' | 'DOWNLOAD_ICS' | 'ADD_COURSE';

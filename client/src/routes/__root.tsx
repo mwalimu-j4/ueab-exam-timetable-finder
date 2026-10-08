@@ -2,6 +2,7 @@ import { createRootRoute, Link, Outlet, useNavigate } from '@tanstack/react-rout
 import { Toaster } from '@/components/ui/toaster';
 import { useDoubleTap } from '@/utils/doubleTap';
 import { isAuthenticated } from '@/lib/auth';
+import { StudentAccess } from '@/components/student/StudentAccess';
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -30,7 +31,7 @@ function RootComponent() {
           >
             UEAB Exam Timetable Finder
           </button>
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
             <Link
               to="/"
               className="text-sm font-medium transition-colors hover:text-[#8A3FD8]"
@@ -38,6 +39,7 @@ function RootComponent() {
             >
               Search
             </Link>
+            <StudentAccess localExams={[]} onTimetable={() => {}} />
           </div>
         </div>
       </nav>

@@ -1,13 +1,15 @@
 import { prisma } from './prisma';
 import { ParsedExam } from '../utils/pdfParser';
 
-export async function createTimetableVersion(name: string, pdfUrl: string | undefined, rowCount: number) {
+export async function createTimetableVersion(name: string, pdfUrl: string | undefined, rowCount: number, kind: string = 'FINAL', label?: string) {
   return prisma.timetableVersion.create({
     data: {
       name,
       pdfUrl,
       rowCount,
       isActive: false,
+      kind,
+      label,
     },
   });
 }
@@ -41,7 +43,7 @@ export async function publishTimetableVersion(id: string) {
 
     return tx.timetableVersion.update({
       where: { id },
-      data: { isActive: true },
+      data: { isActive: true, publishedAt: new Date() },
     });
   });
 }

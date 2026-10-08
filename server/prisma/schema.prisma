@@ -14,6 +14,9 @@ model TimetableVersion {
   rowCount   Int
   isActive   Boolean  @default(false)
   uploadedAt DateTime @default(now())
+  kind       String   @default("FINAL")
+  label      String?
+  publishedAt DateTime?
   exams      Exam[]
 }
 
@@ -77,4 +80,50 @@ model Rating {
 
   @@index([createdAt])
   @@index([clientId])
+}
+
+model Student {
+  id              String           @id @default(cuid())
+  studentId       String           @unique
+  pinHash         String
+  failedAttempts  Int              @default(0)
+  lockedUntil     DateTime?
+  lastSeenVersionId String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lastLoginAt     DateTime?
+  sessions        StudentSession[]
+  savedExams      SavedExam[]
+}
+
+model StudentSession {
+  id           String   @id @default(cuid())
+  studentRefId String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+  userAgentType String?
+  student      Student  @relation(fields: [studentRefId], references: [id], onDelete: Cascade)
+
+  @@index([studentRefId])
+  @@index([expiresAt])
+}
+
+model SavedExam {
+  id                String   @id @default(cuid())
+  studentRefId      String
+  code              String
+  option            String
+  isDone            Boolean  @default(false)
+  doneAt            DateTime?
+  addedAt           DateTime @default(now())
+  lastKnownExamId   String?
+  lastKnownSnapshot Json?
+  changeFlag        String?
+  changeSeenAt      DateTime?
+  student           Student  @relation(fields: [studentRefId], references: [id], onDelete: Cascade)
+
+  @@unique([studentRefId, code, option])
+  @@index([studentRefId])
 }

@@ -84,6 +84,28 @@ export async function deleteTimetable(id: string): Promise<void> {
 }
 
 export async function getAnalytics(params?: AnalyticsParams): Promise<Analytics> {
-  const response = await apiClient.get<Analytics>('/api/admin/analytics', { params });
-  return response.data;
+  try {
+    const response = await apiClient.get<Analytics>('/api/admin/analytics', { params });
+    
+    // Validate response structure
+    const data = response.data;
+    if (!data || typeof data !== 'object') {
+      console.error('[getAnalytics] Invalid response:', data);
+      throw new Error('Invalid analytics data structure');
+    }
+
+    // Ensure required fields exist with proper defaults
+    const validatedData: Analytics = {
+      dailyVisitors: Array.isArray(data.dailyVisitors) ? data.dailyVisitors : [],
+      totalSearches: typeof data.totalSearches === 'number' ? data.totalSearches : 0,
+      downloadsByType: Array.isArray(data.downloadsByType) ? data.downloadsByType : [],
+      topQueries: Array.isArray(data.topQueries) ? data.topQueries : [],
+    };
+
+    console.log('[getAnalytics] Validated data:', validatedData);
+    return validatedData;
+  } catch (error) {
+    console.error('[getAnalytics] Error fetching analytics:', error);
+    throw error;
+  }
 }

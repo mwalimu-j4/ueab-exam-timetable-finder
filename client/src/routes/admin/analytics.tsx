@@ -56,6 +56,10 @@ function AnalyticsPage() {
     queryFn: () => getAnalytics({ from: appliedFrom, to: appliedTo }),
   });
 
+  // Log analytics data for debugging
+  console.log('[AnalyticsPage] Analytics data:', analytics);
+  console.log('[AnalyticsPage] Daily visitors:', analytics?.dailyVisitors);
+
   const handleApply = () => {
     setAppliedFrom(fromDate);
     setAppliedTo(toDate);

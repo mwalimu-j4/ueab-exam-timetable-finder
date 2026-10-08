@@ -29,6 +29,7 @@ export interface UploadResponse {
   rowCount: number;
   sampleRows: Exam[];
   unparsedLines: string[];
+  pdfUrl?: string | null;
 }
 
 export interface LoginRequest {

@@ -1,9 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
+import multer from 'multer';
 
 export function errorMiddleware(err: any, req: Request, res: Response, next: NextFunction) {
   console.error('Error:', err);
+
+  if (err instanceof multer.MulterError) {
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? 'File size must not exceed 15MB'
+      : err.message;
+    return res.status(400).json({ error: message });
+  }
+
+  if (err instanceof Error && err.message === 'Only PDF files are allowed') {
+    return res.status(400).json({ error: err.message });
+  }
 
   // Prisma errors
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
@@ -25,7 +37,7 @@ export function errorMiddleware(err: any, req: Request, res: Response, next: Nex
   }
 
   // Custom errors with status
-  if (err.status) {
+  if (typeof err.status === 'number') {
     return res.status(err.status).json({ error: err.message });
   }
 

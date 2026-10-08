@@ -124,6 +124,6 @@ export async function getAnalytics(from?: string, to?: string) {
     dailyVisitors,
     totalSearches: searchCount,
     downloadsByType,
-    topSearchedQueries,
+    topQueries: topSearchedQueries,
   };
 }

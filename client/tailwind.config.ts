@@ -15,7 +15,11 @@ export default {
       }
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      },
       colors: {
+        'whatsapp-green': '#25D366',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -62,6 +66,9 @@ export default {
       },
       boxShadow: {
         card: '0 10px 30px rgba(138,63,216,0.12)'
+      },
+      spacing: {
+        'safe-bottom': 'calc(16px + env(safe-area-inset-bottom))',
       },
       borderRadius: {
         lg: 'var(--radius)',

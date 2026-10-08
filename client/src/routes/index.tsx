@@ -5,10 +5,14 @@ import { SearchHero } from '@/components/search/SearchHero';
 import { ResultCard } from '@/components/search/ResultCard';
 import { MyExamsSheet } from '@/components/search/MyExamsSheet';
 import { EmptyState } from '@/components/search/EmptyState';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { RatingDialog } from '@/components/rating/RatingDialog';
 import { useExamSearch } from '@/hooks/useExamSearch';
 import { useSavedExams } from '@/hooks/useSavedExams';
 import { useVisitTracker } from '@/hooks/useVisitTracker';
+import { useRatingPrompt } from '@/hooks/useRatingPrompt';
 import { apiClient } from '@/lib/api';
+import { SUPPORT_PHONE_DISPLAY, WHATSAPP_LINK } from '@/lib/constants';
 import type { TimetableVersion } from '@/types/api.types';
 
 export const Route = createRoute({
@@ -22,7 +26,9 @@ function Index() {
   const { results, loading, error } = useExamSearch(query);
   const { saved, save, remove, isSaved, clashes } = useSavedExams();
   const { trackEvent } = useVisitTracker();
+  const { shouldShow, markAsUsed, submitRating, dismissLater } = useRatingPrompt();
   const [activeVersionDate, setActiveVersionDate] = useState<string | undefined>();
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
 
   // Fire SEARCH event 1 second after user stops typing
   useEffect(() => {
@@ -32,6 +38,24 @@ function Index() {
     }, 1000);
     return () => clearTimeout(timer);
   }, [query, trackEvent]);
+
+  // Mark as used when user searches and gets results
+  useEffect(() => {
+    if (results.length > 0) {
+      markAsUsed();
+    }
+  }, [results, markAsUsed]);
+
+  // Show rating dialog when appropriate
+  useEffect(() => {
+    if (shouldShow) {
+      // Delay showing by 2 seconds so it doesn't interrupt immediately
+      const timer = setTimeout(() => {
+        setShowRatingDialog(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldShow]);
 
   // Fetch active timetable version date for footer
   useEffect(() => {
@@ -45,6 +69,11 @@ function Index() {
 
   const handleChipClick = (chip: string) => setQuery(chip);
 
+  const handleSaveExam = (exam: any) => {
+    save(exam);
+    markAsUsed();
+  };
+
   const showIdle = !query || query.trim().length < 2;
   const showLoading = !showIdle && loading;
   const showError = !showIdle && !loading && !!error;
@@ -54,7 +83,7 @@ function Index() {
   return (
     <div className="min-h-screen bg-surface dark:bg-[#140E24]">
       <SearchHero value={query} onChange={setQuery} />
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+      <main className="container mx-auto px-4 py-6 max-w-2xl mb-24">
         {showIdle && <EmptyState variant="idle" onChipClick={handleChipClick} />}
         {showLoading && <EmptyState variant="loading" />}
         {showError && <EmptyState variant="error" />}
@@ -70,25 +99,51 @@ function Index() {
                 <ResultCard
                   exam={exam}
                   isSaved={isSaved(exam.id)}
-                  onToggleSave={save}
+                  onToggleSave={handleSaveExam}
                 />
               </div>
             ))}
           </div>
         )}
       </main>
+      
+      {/* WhatsApp Button */}
+      <WhatsAppButton />
+      
       {/* Footer */}
-      <footer className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+      <footer className="text-center py-12 pb-24 text-sm text-gray-500 dark:text-gray-500 space-y-2">
         {activeVersionDate && (
           <p>Timetable last updated: {new Date(activeVersionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
         )}
-        <p className="mt-1">Made for UEAB students 💜</p>
+        <p>Made for UEAB students 💜</p>
+        <p>
+          Need help?{' '}
+          <a
+            href={WHATSAPP_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-whatsapp-green hover:underline font-medium"
+          >
+            WhatsApp {SUPPORT_PHONE_DISPLAY}
+          </a>
+        </p>
+        <p className="text-gray-400">Developed by Joshua Mwalimu</p>
       </footer>
+      
       <MyExamsSheet
         saved={saved}
         clashes={clashes}
         onRemove={remove}
         activeVersionDate={activeVersionDate}
+        onDownload={markAsUsed}
+      />
+      
+      {/* Rating Dialog */}
+      <RatingDialog
+        open={showRatingDialog}
+        onOpenChange={setShowRatingDialog}
+        onSubmit={submitRating}
+        onDismiss={dismissLater}
       />
     </div>
   );

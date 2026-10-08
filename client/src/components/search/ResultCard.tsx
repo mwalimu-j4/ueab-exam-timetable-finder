@@ -22,52 +22,67 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
   const venueText = [exam.building, exam.venue].filter(Boolean).join(' - ') || 'Venue TBA';
 
   return (
-    <div className="bg-white dark:bg-[#1E1633] rounded-2xl shadow-card border-l-4 border-[#8A3FD8] p-5 animate-fadeIn">
-      {/* Top row: code + day badge */}
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <h3 className="text-[#8A3FD8] font-bold text-lg">{exam.code}</h3>
+    <div className="bg-white dark:bg-[#1E1633] rounded-2xl shadow-card hover:shadow-xl transition-shadow duration-200 border border-gray-100 dark:border-gray-800 p-5 sm:p-6 animate-fadeIn">
+      {/* Top row: code badge + day badge */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="inline-block bg-brand-gradient text-white px-4 py-1.5 rounded-full font-bold text-base">
+          {exam.code}
+        </div>
         {dayBadge.variant && (
-          <Badge className={`${badgeVariantClass[dayBadge.variant]} text-xs font-semibold px-2 py-1`}>
+          <Badge className={`${badgeVariantClass[dayBadge.variant]} text-xs font-semibold px-3 py-1`}>
             {dayBadge.label}
           </Badge>
         )}
       </div>
 
       {/* Title */}
-      <p className="text-base font-medium text-gray-900 dark:text-gray-100 mb-3">{exam.title}</p>
+      <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 leading-snug">
+        {exam.title}
+      </h3>
 
-      {/* Date + Time */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-2">
-        <Clock className="h-4 w-4" />
-        <span>{formatExamDate(exam.date)} • {formatExamTime(exam.start, exam.end)}</span>
-      </div>
-
-      {/* Venue */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-2">
-        <MapPin className="h-4 w-4" />
-        <span>{venueText}</span>
-      </div>
-
-      {/* Instructor (if present) */}
-      {exam.instructor && (
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-2">
-          <User className="h-4 w-4" />
-          <span>{exam.instructor}</span>
+      {/* Info rows with icons */}
+      <div className="space-y-2.5 mb-4">
+        {/* Date */}
+        <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+          <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center mt-0.5">
+            📅
+          </div>
+          <span className="flex-1">{formatExamDate(exam.date)}</span>
         </div>
-      )}
 
-      {/* Student count (if present and > 0) */}
-      {exam.students && exam.students > 0 && (
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-3">
-          <Users className="h-4 w-4" />
-          <span>{exam.students} student{exam.students !== 1 ? 's' : ''}</span>
+        {/* Time */}
+        <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+          <Clock className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{formatExamTime(exam.start, exam.end)}</span>
         </div>
-      )}
+
+        {/* Venue */}
+        <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+          <MapPin className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{venueText}</span>
+        </div>
+
+        {/* Instructor (if present) */}
+        {exam.instructor && (
+          <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+            <User className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <span className="flex-1">{exam.instructor}</span>
+          </div>
+        )}
+
+        {/* Student count (if present and > 0) */}
+        {exam.students && exam.students > 0 && (
+          <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+            <Users className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <span className="flex-1">{exam.students} student{exam.students !== 1 ? 's' : ''}</span>
+          </div>
+        )}
+      </div>
 
       {/* Option badge (only if not Main) */}
       {exam.option && exam.option !== 'Main' && (
-        <div className="mb-3">
-          <Badge variant="secondary" className="text-xs">
+        <div className="mb-4">
+          <Badge variant="secondary" className="text-xs font-medium">
             {exam.option}
           </Badge>
         </div>
@@ -77,7 +92,7 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
       <button
         onClick={() => onToggleSave(exam)}
         className={`
-          w-full min-h-[44px] px-4 py-2.5 rounded-xl font-medium transition-all duration-150
+          w-full min-h-[48px] px-4 py-3 rounded-xl font-semibold transition-all duration-200
           ${
             isSaved
               ? 'bg-[#8A3FD8]/10 text-[#8A3FD8] hover:bg-[#8A3FD8]/20'
@@ -88,13 +103,13 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
       >
         {isSaved ? (
           <span className="flex items-center justify-center gap-2">
-            <Check className="h-4 w-4" />
+            <Check className="h-5 w-5" />
             Saved
           </span>
         ) : (
           <span className="flex items-center justify-center gap-2">
-            <Plus className="h-4 w-4" />
-            Save
+            <Plus className="h-5 w-5" />
+            Save Exam
           </span>
         )}
       </button>

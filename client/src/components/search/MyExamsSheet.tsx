@@ -10,18 +10,22 @@ interface MyExamsSheetProps {
   clashes: Array<[Exam, Exam]>;
   onRemove: (id: string) => void;
   activeVersionDate?: string;
+  onDownload?: () => void;
 }
 
-export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate }: MyExamsSheetProps) {
+export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate, onDownload }: MyExamsSheetProps) {
   const [open, setOpen] = useState(false);
 
   if (saved.length === 0) return null;
 
   const handleDownloadPDF = () => {
-    // Generate a simple text download with exam details
+    onDownload?.();
+    // Generate a branded text download with exam details
     const lines = [
-      'MY SAVED EXAMS',
-      '='.repeat(50),
+      '═══════════════════════════════════════════════',
+      '     UEAB EXAM TIMETABLE FINDER',
+      '          MY SAVED EXAMS',
+      '═══════════════════════════════════════════════',
       '',
     ];
 
@@ -31,38 +35,47 @@ export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate }: My
       return a.start.localeCompare(b.start);
     });
 
-    sortedExams.forEach(exam => {
+    sortedExams.forEach((exam, idx) => {
+      if (idx > 0) lines.push('───────────────────────────────────────────────');
       lines.push(`${exam.code} - ${exam.title}`);
-      lines.push(`Date: ${formatExamDate(exam.date)}`);
-      lines.push(`Time: ${formatExamTime(exam.start, exam.end)}`);
-      lines.push(`Venue: ${exam.building} - ${exam.venue}`);
+      lines.push(`📅 Date: ${formatExamDate(exam.date)}`);
+      lines.push(`⏰ Time: ${formatExamTime(exam.start, exam.end)}`);
+      lines.push(`📍 Venue: ${[exam.building, exam.venue].filter(Boolean).join(' - ') || 'TBA'}`);
       if (exam.option && exam.option !== 'Main') {
-        lines.push(`Option: ${exam.option}`);
+        lines.push(`📝 Option: ${exam.option}`);
+      }
+      if (exam.instructor) {
+        lines.push(`👤 Instructor: ${exam.instructor}`);
       }
       lines.push('');
     });
 
+    lines.push('═══════════════════════════════════════════════');
     if (activeVersionDate) {
-      lines.push('');
       lines.push(`Timetable last updated: ${new Date(activeVersionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`);
     }
+    lines.push('Made for UEAB students 💜');
+    lines.push('Developed by Joshua Mwalimu');
+    lines.push('═══════════════════════════════════════════════');
 
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'my-exams.txt';
+    link.download = 'my-ueab-exams.txt';
     link.click();
     URL.revokeObjectURL(url);
   };
 
   const handleDownloadICS = () => {
+    onDownload?.();
     // Generate a .ics file with VEVENT entries
     const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//UEAB Exam Timetable//EN',
+      'PRODID:-//UEAB Exam Timetable Finder//EN',
       'CALSCALE:GREGORIAN',
+      'X-WR-CALNAME:My UEAB Exams',
     ];
 
     saved.forEach(exam => {
@@ -85,20 +98,23 @@ export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate }: My
       lines.push('BEGIN:VEVENT');
       lines.push(`DTSTART:${formatICS(dtStart)}`);
       lines.push(`DTEND:${formatICS(dtEnd)}`);
-      lines.push(`SUMMARY:${exam.code} - ${exam.title}`);
-      lines.push(`LOCATION:${exam.building} - ${exam.venue}`);
-      lines.push(`DESCRIPTION:Instructor: ${exam.instructor}`);
+      lines.push(`SUMMARY:${exam.code} Exam - ${exam.title}`);
+      lines.push(`LOCATION:${[exam.building, exam.venue].filter(Boolean).join(' - ') || 'TBA'}`);
+      if (exam.instructor) {
+        lines.push(`DESCRIPTION:Instructor: ${exam.instructor}`);
+      }
       lines.push(`UID:${exam.id}@ueab-exam-timetable`);
+      lines.push('STATUS:CONFIRMED');
       lines.push('END:VEVENT');
     });
 
     lines.push('END:VCALENDAR');
 
-    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'my-exams.ics';
+    link.download = 'my-ueab-exams.ics';
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -112,10 +128,11 @@ export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate }: My
 
   return (
     <>
-      {/* Floating bottom bar */}
+      {/* Floating bottom bar - centered, safe area aware */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-brand-gradient text-white px-6 py-3 rounded-full shadow-lg font-medium hover:brightness-110 transition-all"
+        className="fixed left-1/2 -translate-x-1/2 z-40 bg-brand-gradient text-white px-6 py-3 rounded-full shadow-lg font-medium hover:brightness-110 transition-all"
+        style={{ bottom: 'calc(16px + env(safe-area-inset-bottom))' }}
         aria-label={`Open saved exams, ${saved.length} exam${saved.length !== 1 ? 's' : ''} saved`}
       >
         My Exams ({saved.length})
@@ -124,9 +141,9 @@ export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate }: My
       {/* Full-screen dialog */}
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-[100]" />
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
           <Dialog.Content
-            className="fixed inset-0 z-[101] bg-surface dark:bg-[#140E24] overflow-y-auto"
+            className="fixed inset-0 z-50 bg-surface dark:bg-[#140E24] overflow-y-auto"
             aria-describedby="saved-exams-description"
           >
             <div className="container mx-auto px-4 py-6 max-w-2xl">
@@ -188,7 +205,7 @@ export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate }: My
                         {formatExamDate(exam.date)} • {formatExamTime(exam.start, exam.end)}
                       </p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {exam.building} - {exam.venue}
+                        {[exam.building, exam.venue].filter(Boolean).join(' - ') || 'Venue TBA'}
                       </p>
                     </div>
                     <button

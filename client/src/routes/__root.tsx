@@ -8,6 +8,15 @@ export const Route = createRootRoute({
   component: RootComponent,
 });
 
+function getLocalExams() {
+  try {
+    const value = localStorage.getItem('ueab-saved-exams');
+    return value ? JSON.parse(value) : [];
+  } catch {
+    return [];
+  }
+}
+
 function RootComponent() {
   const navigate = useNavigate();
 
@@ -39,7 +48,7 @@ function RootComponent() {
             >
               Search
             </Link>
-            <StudentAccess localExams={[]} onTimetable={() => {}} />
+            <StudentAccess localExams={getLocalExams()} onTimetable={() => {}} />
           </div>
         </div>
       </nav>

@@ -61,26 +61,26 @@ function AnalyticsPage() {
     setAppliedTo(toDate);
   };
 
-  // Calculate stats
+  // Calculate stats with safe fallbacks
   const todayVisitors = analytics?.dailyVisitors
-    .filter((v) => v.date === today)
-    .reduce((sum, v) => sum + v.count, 0) || 0;
+    ?.filter((v) => v.date === today)
+    .reduce((sum, v) => sum + (v.count || 0), 0) || 0;
 
   const last7Days = Array.from({ length: 7 }, (_, i) =>
     format(subDays(new Date(), i), 'yyyy-MM-dd')
   );
   const weekVisitors = analytics?.dailyVisitors
-    .filter((v) => last7Days.includes(v.date))
-    .reduce((sum, v) => sum + v.count, 0) || 0;
+    ?.filter((v) => last7Days.includes(v.date))
+    .reduce((sum, v) => sum + (v.count || 0), 0) || 0;
 
   const totalVisitors = analytics?.dailyVisitors
-    .reduce((sum, v) => sum + v.count, 0) || 0;
+    ?.reduce((sum, v) => sum + (v.count || 0), 0) || 0;
 
   const pdfDownloads = analytics?.downloadsByType
-    .find((d) => d.type === 'DOWNLOAD_PDF')?.count || 0;
+    ?.find((d) => d.type === 'DOWNLOAD_PDF')?.count || 0;
 
   const icsDownloads = analytics?.downloadsByType
-    .find((d) => d.type === 'DOWNLOAD_ICS')?.count || 0;
+    ?.find((d) => d.type === 'DOWNLOAD_ICS')?.count || 0;
 
   if (isLoading) {
     return (
@@ -95,8 +95,31 @@ function AnalyticsPage() {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Analytics</h1>
+          <Button variant="outline" onClick={logout}>
+            Logout
+          </Button>
+        </div>
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <p className="text-lg text-red-600">Failed to load analytics</p>
+          <p className="text-sm text-muted-foreground">
+            {error instanceof Error ? error.message : 'Unknown error occurred'}
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure analytics data exists with proper structure
+  if (!analytics) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p className="text-lg text-muted-foreground">No analytics data available</p>
         </div>
       </div>
     );

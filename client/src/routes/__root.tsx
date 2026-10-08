@@ -1,4 +1,4 @@
-import { createRootRoute, Link, Outlet, useNavigate } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useNavigate } from '@tanstack/react-router';
 import { Toaster } from '@/components/ui/toaster';
 import { useDoubleTap } from '@/utils/doubleTap';
 import { isAuthenticated } from '@/lib/auth';
@@ -30,24 +30,17 @@ function RootComponent() {
 
   return (
     <div className="min-h-screen bg-surface dark:bg-[#140E24]">
-      <nav className="bg-white dark:bg-[#1E1633] border-b border-black/5 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <nav className="bg-white dark:bg-[#1E1633] shadow-sm">
+        <div className="container mx-auto px-3 py-2.5 flex items-center justify-between gap-2">
           <button
             onClick={handleTitleDoubleTap}
-            className="text-xl font-bold bg-brand-gradient bg-clip-text text-transparent select-none cursor-pointer hover:opacity-80 transition-opacity"
+            className="whitespace-nowrap text-[11px] sm:text-base font-bold leading-tight text-center bg-brand-gradient bg-clip-text text-transparent select-none cursor-pointer hover:opacity-80 transition-opacity"
             style={{ userSelect: 'none' }}
             aria-label="UEAB Exam Timetable Finder - Go to home"
           >
             UEAB Exam Timetable Finder
           </button>
-          <div className="flex gap-4 items-center">
-            <Link
-              to="/"
-              className="text-sm font-medium transition-colors hover:text-[#8A3FD8]"
-              activeProps={{ className: 'text-[#8A3FD8] border-b-2 border-[#8A3FD8]' }}
-            >
-              Search
-            </Link>
+          <div className="flex items-center">
             <StudentAccess localExams={getLocalExams()} onTimetable={() => {}} />
           </div>
         </div>

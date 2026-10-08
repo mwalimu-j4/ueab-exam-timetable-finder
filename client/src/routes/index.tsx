@@ -7,6 +7,7 @@ import { MyExamsSheet } from '@/components/search/MyExamsSheet';
 import { EmptyState } from '@/components/search/EmptyState';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { RatingDialog } from '@/components/rating/RatingDialog';
+import { Star } from 'lucide-react';
 import { useExamSearch } from '@/hooks/useExamSearch';
 import { useSavedExams } from '@/hooks/useSavedExams';
 import { useVisitTracker } from '@/hooks/useVisitTracker';
@@ -134,10 +135,13 @@ function Index() {
       </main>
       
       {/* WhatsApp Button */}
+      <button onClick={() => setShowRatingDialog(true)} className="fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-amber-400 text-white shadow-lg hover:scale-110 transition-transform" style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))' }} aria-label="Rate your experience">
+        <Star className="h-6 w-6 fill-white" />
+      </button>
       <WhatsAppButton />
       
       {/* Footer */}
-      <footer className="text-center py-12 pb-24 text-sm text-gray-500 dark:text-gray-500 space-y-2">
+      <footer className="text-center py-6 pb-24 text-sm text-gray-500 dark:text-gray-500 space-y-1">
         {activeVersionDate && (
           <p>Timetable last updated: {new Date(activeVersionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
         )}

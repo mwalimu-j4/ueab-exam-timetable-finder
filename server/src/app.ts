@@ -4,6 +4,7 @@ import cors from 'cors';
 import adminRoutes from './routes/admin.routes';
 import publicRoutes from './routes/public.routes';
 import { errorMiddleware } from './middleware/error.middleware';
+import studentRoutes from './routes/student.routes';
 
 const app: Application = express();
 
@@ -21,8 +22,8 @@ app.use(cors({
 }));
 
 // Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -31,6 +32,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/admin', adminRoutes);
+app.use('/api/student', studentRoutes);
 app.use('/api', publicRoutes);
 
 // 404 handler

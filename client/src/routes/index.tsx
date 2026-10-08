@@ -14,6 +14,8 @@ import { useRatingPrompt } from '@/hooks/useRatingPrompt';
 import { apiClient } from '@/lib/api';
 import { SUPPORT_PHONE_DISPLAY, WHATSAPP_LINK } from '@/lib/constants';
 import type { TimetableVersion } from '@/types/api.types';
+import type { StudentTimetable } from '@/types/api.types';
+import { toggleStudentExam } from '@/services/student.service';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -29,6 +31,12 @@ function Index() {
   const { shouldShow, markAsUsed, submitRating, dismissLater } = useRatingPrompt();
   const [activeVersionDate, setActiveVersionDate] = useState<string | undefined>();
   const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [cloudTimetable, setCloudTimetable] = useState<StudentTimetable | null>(null);
+  useEffect(() => {
+    const onCloudTimetable = (event: Event) => setCloudTimetable((event as CustomEvent<StudentTimetable>).detail);
+    window.addEventListener('ueab-student-timetable', onCloudTimetable);
+    return () => window.removeEventListener('ueab-student-timetable', onCloudTimetable);
+  }, []);
 
   // Fire SEARCH event 1 second after user stops typing
   useEffect(() => {
@@ -84,6 +92,24 @@ function Index() {
     <div className="min-h-screen bg-surface dark:bg-[#140E24]">
       <SearchHero value={query} onChange={setQuery} />
       <main className="container mx-auto px-4 py-6 max-w-2xl mb-24">
+        {cloudTimetable && (
+          <section className="mb-6 rounded-2xl bg-white dark:bg-[#1E1633] p-5 shadow-card" aria-live="polite">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold">My timetable</h2>
+              {cloudTimetable.summary.activeVersion && <span className={`rounded-full px-3 py-1 text-xs font-semibold ${cloudTimetable.summary.activeVersion.kind === 'TENTATIVE' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>{cloudTimetable.summary.activeVersion.kind === 'TENTATIVE' ? 'Tentative' : 'Final'}</span>}
+            </div>
+            <p className="text-sm text-gray-600 mb-4">{cloudTimetable.summary.done} of {cloudTimetable.summary.total} done · {cloudTimetable.summary.remaining} remaining</p>
+            <div className="space-y-2">
+              {cloudTimetable.items.map(item => item.exam ? (
+                <div key={item.id} className={`flex items-center gap-3 rounded-xl border p-3 ${item.isDone ? 'opacity-60' : ''}`}>
+                  <input type="checkbox" checked={item.isDone} onChange={async event => { const next = await toggleStudentExam(item.code, item.option, event.target.checked); setCloudTimetable(next); }} className="h-5 w-5" aria-label={`Mark ${item.code} done`} />
+                  <div className="min-w-0"><p className={`font-semibold ${item.isDone ? 'line-through' : ''}`}>{item.code} · {item.exam.title}</p><p className="text-sm text-gray-600">{new Date(item.exam.date).toLocaleDateString('en-GB')} · {item.exam.start}–{item.exam.end} · {[item.exam.building, item.exam.venue].filter(Boolean).join(' ') || 'Venue TBA'}</p></div>
+                  {item.changeFlag && <span className="ml-auto text-xs font-semibold text-amber-700">{item.changeFlag === 'REMOVED' ? 'Removed' : 'Changed'}</span>}
+                </div>
+              ) : <div key={item.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"> {item.code} is not in the latest timetable.</div>)}
+            </div>
+          </section>
+        )}
         {showIdle && <EmptyState variant="idle" onChipClick={handleChipClick} />}
         {showLoading && <EmptyState variant="loading" />}
         {showError && <EmptyState variant="error" />}

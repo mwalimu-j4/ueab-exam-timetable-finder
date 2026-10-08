@@ -120,10 +120,16 @@ export async function getAnalytics(from?: string, to?: string) {
     count: q._count.query,
   }));
 
+  const studentCount = await prisma.student.count();
+  const savedExamCount = await prisma.savedExam.count();
+  const doneExamCount = await prisma.savedExam.count({ where: { isDone: true } });
   return {
     dailyVisitors,
     totalSearches: searchCount,
     downloadsByType,
     topQueries: topSearchedQueries,
+    studentsWithSavedTimetables: studentCount,
+    averageSavedExamsPerStudent: studentCount ? savedExamCount / studentCount : 0,
+    percentageMarkedDone: savedExamCount ? (doneExamCount / savedExamCount) * 100 : 0,
   };
 }

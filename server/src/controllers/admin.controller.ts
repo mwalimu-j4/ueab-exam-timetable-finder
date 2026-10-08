@@ -157,6 +157,8 @@ export async function uploadTimetable(req: Request, res: Response) {
 
     stage = 'cloudinary';
     const name = req.body.name || `Upload ${new Date().toISOString()}`;
+    const kind = req.body.kind === 'TENTATIVE' ? 'TENTATIVE' : 'FINAL';
+    const label = typeof req.body.label === 'string' ? req.body.label.trim().slice(0, 120) || null : null;
     const cloudinaryUpload = await uploadTimetablePdf(req.file.buffer, name);
     const sampleRows = exams.slice(0, 20);
 
@@ -181,6 +183,8 @@ export async function uploadTimetable(req: Request, res: Response) {
             pdfUrl: cloudinaryUpload.secure_url,
             rowCount: exams.length,
             isActive: false,
+            kind,
+            label,
           },
         });
 

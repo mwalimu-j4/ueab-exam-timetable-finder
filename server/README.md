@@ -145,3 +145,20 @@ Future deployments will:
 - Update `prisma/schema.prisma`
 - Commit and push
 - Render will automatically run `prisma db push` during build
+# Student cloud timetable
+
+Student cloud saves are additive to the device-only My Exams list. Students register with a normalized student ID and a 4–6 digit PIN; PINs use bcrypt cost 12 and are never returned or logged. Every timetable read and write is authorized from a 256-bit session token, stored server-side only as SHA-256, with a 90-day sliding expiry. The API also sets an HttpOnly cookie for browsers and accepts the in-memory/local-storage fallback token in `Authorization: Bearer`.
+
+Apply the additive migration locally with:
+
+```bash
+npx prisma migrate dev --name student_cloud_timetable
+```
+
+Deploy it to Neon with:
+
+```bash
+npx prisma migrate deploy
+```
+
+Configure `DATABASE_URL`, `CORS_ORIGIN` (the exact Vercel origin), `NODE_ENV=production`, and the existing admin/cloudinary variables. `POST /api/student/session`, `GET /api/student/timetable`, item add/remove/done routes, logout, logout-all, change acknowledgement, and deletion are under `/api/student`; ownership is always derived from the session, never from a supplied student ID. Version metadata is `TENTATIVE` or `FINAL` plus an optional label. Saved items are keyed by course code and option, so done state survives newly uploaded Exam rows; changes and removals are reconciled lazily when the timetable is read.

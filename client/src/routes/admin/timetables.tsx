@@ -52,6 +52,8 @@ function TimetablesPage() {
   const queryClient = useQueryClient();
 
   const [name, setName] = useState('');
+  const [kind, setKind] = useState<'TENTATIVE' | 'FINAL'>('FINAL');
+  const [label, setLabel] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -97,7 +99,7 @@ function TimetablesPage() {
     try {
       const result = await uploadTimetable(selectedFile, name, (progress) => {
         setUploadProgress(progress);
-      });
+      }, kind, label);
       setUploadResult(result);
       toast({
         title: 'Upload successful',
@@ -261,6 +263,19 @@ function TimetablesPage() {
               onChange={(e) => setName(e.target.value)}
               disabled={isUploading || !!uploadResult}
             />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="kind">Version</Label>
+              <select id="kind" value={kind} onChange={(e) => setKind(e.target.value as 'TENTATIVE' | 'FINAL')} disabled={isUploading || !!uploadResult} className="w-full rounded-md border p-2">
+                <option value="FINAL">Final</option>
+                <option value="TENTATIVE">Tentative</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="label">Student-facing label (optional)</Label>
+              <Input id="label" value={label} onChange={(e) => setLabel(e.target.value)} disabled={isUploading || !!uploadResult} placeholder="Final Timetable" />
+            </div>
           </div>
 
           <UploadZone

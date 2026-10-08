@@ -5,10 +5,12 @@ import { SearchHero } from '@/components/search/SearchHero';
 import { ResultCard } from '@/components/search/ResultCard';
 import { MyExamsSheet } from '@/components/search/MyExamsSheet';
 import { EmptyState } from '@/components/search/EmptyState';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { useExamSearch } from '@/hooks/useExamSearch';
 import { useSavedExams } from '@/hooks/useSavedExams';
 import { useVisitTracker } from '@/hooks/useVisitTracker';
 import { apiClient } from '@/lib/api';
+import { SUPPORT_PHONE_DISPLAY, WHATSAPP_LINK } from '@/lib/constants';
 import type { TimetableVersion } from '@/types/api.types';
 
 export const Route = createRoute({
@@ -54,7 +56,7 @@ function Index() {
   return (
     <div className="min-h-screen bg-surface dark:bg-[#140E24]">
       <SearchHero value={query} onChange={setQuery} />
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+      <main className="container mx-auto px-4 py-6 max-w-2xl mb-24">
         {showIdle && <EmptyState variant="idle" onChipClick={handleChipClick} />}
         {showLoading && <EmptyState variant="loading" />}
         {showError && <EmptyState variant="error" />}
@@ -77,13 +79,30 @@ function Index() {
           </div>
         )}
       </main>
+      
+      {/* WhatsApp Button */}
+      <WhatsAppButton />
+      
       {/* Footer */}
-      <footer className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+      <footer className="text-center py-12 pb-24 text-sm text-gray-500 dark:text-gray-500 space-y-2">
         {activeVersionDate && (
           <p>Timetable last updated: {new Date(activeVersionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
         )}
-        <p className="mt-1">Made for UEAB students 💜</p>
+        <p>Made for UEAB students 💜</p>
+        <p>
+          Need help?{' '}
+          <a
+            href={WHATSAPP_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-whatsapp-green hover:underline font-medium"
+          >
+            WhatsApp {SUPPORT_PHONE_DISPLAY}
+          </a>
+        </p>
+        <p className="text-gray-400">Developed by Joshua Mwalimu</p>
       </footer>
+      
       <MyExamsSheet
         saved={saved}
         clashes={clashes}

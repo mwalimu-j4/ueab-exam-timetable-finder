@@ -7,11 +7,13 @@ import {
   deleteTimetable,
 } from '../controllers/admin.controller';
 import { getAnalyticsController } from '../controllers/analytics.controller';
+import { getRatingSummary } from '../controllers/rating.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { validateRequest } from '../middleware/validation.middleware';
 import { uploadRateLimit } from '../middleware/rateLimit.middleware';
 import { parseTimetableUpload } from '../middleware/upload.middleware';
 import { loginSchema, analyticsQuerySchema } from '../validators/admin.validator';
+import { ratingSummaryQuerySchema } from '../validators/rating.validator';
 
 const router: IRouter = Router();
 
@@ -34,5 +36,7 @@ router.get('/timetables', authMiddleware, listTimetables);
 router.delete('/timetables/:id', authMiddleware, deleteTimetable);
 
 router.get('/analytics', authMiddleware, validateRequest(analyticsQuerySchema, 'query'), getAnalyticsController);
+
+router.get('/ratings/summary', authMiddleware, validateRequest(ratingSummaryQuerySchema, 'query'), getRatingSummary);
 
 export default router;

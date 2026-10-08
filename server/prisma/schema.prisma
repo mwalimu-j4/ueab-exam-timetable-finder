@@ -66,3 +66,15 @@ model Admin {
   email        String @unique
   passwordHash String
 }
+
+model Rating {
+  id             String   @id @default(cuid())
+  stars          Int
+  comment        String?
+  clientId       String
+  userAgentType  String?
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([clientId])
+}

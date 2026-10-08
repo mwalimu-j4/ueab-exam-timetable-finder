@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { submitRating } from '@/services/rating.service';
 
 const HAS_USED_APP_KEY = 'ueab_has_used_app';

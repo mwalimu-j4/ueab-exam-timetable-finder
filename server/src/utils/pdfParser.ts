@@ -25,7 +25,6 @@ export interface ParseResult {
   unparsedLines: string[];
 }
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const OPTIONS = ['Main', 'Group A', 'Group B', 'Group C', 'Group D', 'Inter Session 1', 'Inter Session 2', 'Blended Online'];
 
 export async function parseTimetablePDF(buffer: Buffer): Promise<ParseResult> {
@@ -67,106 +66,29 @@ export async function parseTimetablePDF(buffer: Buffer): Promise<ParseResult> {
 
     const lines = allText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-    // Detect and remove repeated headers
-    const headerPatterns = new Map<string, number>();
-    lines.forEach(line => {
-      const match = line.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{2})[\s\-]*(\d{2})[\s\-]*(\d{4})\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})\s+([A-Z]{2,4}\s?\d{3,4}[A-Z]?)/);
-      if (match) {
-        const key = `${match[1]}-${match[2]}-${match[3]}-${match[4]}-${match[5]}-${match[6]}-${match[7]}`;
-        headerPatterns.set(key, (headerPatterns.get(key) || 0) + 1);
-      }
-    });
+    const seenExams = new Set<string>();
 
-    const repeatedHeaders = new Set(
-      Array.from(headerPatterns.entries())
-        .filter(([_, count]) => count >= 3)
-        .map(([key]) => key)
-    );
+    // Parse each extracted line. PDF text extraction varies between browsers and
+    // generators, so accept common UEAB timetable row shapes and dedupe rows.
+    for (const rawLine of lines) {
+      const line = normalizeLine(rawLine);
+      const parsedExam = parseTimetableLine(line);
 
-    // Parse each line
-    for (const line of lines) {
-      const match = line.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{2})[\s\-]*(\d{2})[\s\-]*(\d{4})\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})\s+([A-Z]{2,4}\s?\d{3,4}[A-Z]?)\s+(.*)$/);
+      if (parsedExam) {
+        const key = [
+          parsedExam.date.toISOString().slice(0, 10),
+          parsedExam.start,
+          parsedExam.end,
+          normalizeCourseCode(parsedExam.code),
+          parsedExam.title.toLowerCase(),
+        ].join('|');
 
-      if (match) {
-        const [_, dayName, day, month, year, start, end, code, remainder] = match;
-        const headerKey = `${dayName}-${day}-${month}-${year}-${start}-${end}-${code}`;
-
-        if (repeatedHeaders.has(headerKey)) {
-          continue; // Skip repeated header
-        }
-
-        try {
-          const date = new Date(`${year}-${month}-${day}`);
-          if (isNaN(date.getTime())) {
-            unparsedLines.push(line);
-            continue;
-          }
-
-          // Parse remainder
-          let remainingText = remainder.trim();
-          let option: string | undefined;
-          let instructor: string | undefined;
-          let building: string | undefined;
-          let venue: string | undefined;
-          let rows: number | undefined;
-          let students: number | undefined;
-
-          // Extract option
-          for (const opt of OPTIONS) {
-            if (remainingText.includes(opt)) {
-              option = opt;
-              remainingText = remainingText.replace(opt, '|OPTION|');
-              break;
-            }
-          }
-
-          // Extract instructor
-          const instructorMatch = remainingText.match(/(Mr\.|Mrs\.|Ms\.|Dr\.|Prof\.)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/);
-          if (instructorMatch) {
-            instructor = instructorMatch[0].trim();
-            remainingText = remainingText.replace(instructorMatch[0], '|INSTRUCTOR|');
-          }
-
-          // Extract numbers (rows and students)
-          const numbers = remainingText.match(/\b(\d+)\b/g);
-          if (numbers && numbers.length >= 2) {
-            rows = parseInt(numbers[numbers.length - 2], 10);
-            students = parseInt(numbers[numbers.length - 1], 10);
-            remainingText = remainingText.replace(/\b\d+\b/g, '|NUMBER|');
-          }
-
-          // Split remainder into parts
-          const parts = remainingText.split('|').map(p => p.trim()).filter(p => p && p !== 'OPTION' && p !== 'INSTRUCTOR' && p !== 'NUMBER');
-
-          // Title is typically the first substantial part
-          const title = parts[0] || 'Unknown';
-          
-          // Building and venue are usually the last parts if present
-          if (parts.length > 1) {
-            building = parts[parts.length - 2] || undefined;
-            venue = parts[parts.length - 1] || undefined;
-          }
-
-          exams.push({
-            date,
-            dayName,
-            start,
-            end,
-            code: code.trim(),
-            title: title.trim(),
-            option,
-            instructor,
-            building,
-            venue,
-            rows,
-            students,
-          });
-        } catch (error) {
-          unparsedLines.push(line);
+        if (!seenExams.has(key)) {
+          seenExams.add(key);
+          exams.push(parsedExam);
         }
       } else if (line.length > 10) {
-        // Only track substantial lines that couldn't be parsed
-        const hasDatePattern = /\d{2}[\s\-]*\d{2}[\s\-]*\d{4}/.test(line);
+        const hasDatePattern = /\d{1,2}\s*[-\/ ]\s*\d{1,2}\s*[-\/ ]\s*\d{4}/.test(line);
         if (hasDatePattern) {
           unparsedLines.push(line);
         }
@@ -177,4 +99,167 @@ export async function parseTimetablePDF(buffer: Buffer): Promise<ParseResult> {
   }
 
   return { exams, unparsedLines };
+}
+
+function normalizeLine(value: string): string {
+  return value
+    .replace(/[\u00a0\t]+/g, ' ')
+    .replace(/[‐‑‒–—]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeCourseCode(value: string): string {
+  return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function parseTimetableLine(line: string): ParsedExam | null {
+  if (/final exam timetable|with venues|university of eastern africa|^date\b|^day\b/i.test(line)) {
+    return null;
+  }
+
+  const daySource = '(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|Sat|Sun)';
+  const dateSource = '(\\d{1,2})\\s*[-\\/ ]\\s*(\\d{1,2})\\s*[-\\/ ]\\s*(\\d{4})';
+  const timeSource = '(\\d{1,2}:\\d{2}\\s*(?:AM|PM)?)';
+  const codeSource = '([A-Z]{2,6}\\s*-?\\s*\\d{3,4}\\s*[A-Z]?)';
+  const patterns = [
+    new RegExp('^' + daySource + '\\s+' + dateSource + '\\s+' + timeSource + '\\s*(?:-|to)?\\s+' + timeSource + '\\s+' + codeSource + '\\s+(.+)$', 'i'),
+    new RegExp('^' + dateSource + '\\s+' + daySource + '\\s+' + timeSource + '\\s*(?:-|to)?\\s+' + timeSource + '\\s+' + codeSource + '\\s+(.+)$', 'i'),
+    new RegExp('^' + daySource + '\\s+' + dateSource + '\\s+' + codeSource + '\\s+' + timeSource + '\\s*(?:-|to)?\\s+' + timeSource + '\\s+(.+)$', 'i')
+  ];
+
+  for (const pattern of patterns) {
+    const match = line.match(pattern);
+    if (!match) continue;
+
+    const parsed = buildExamFromMatch(match);
+    if (parsed) return parsed;
+  }
+
+  return null;
+}
+
+function buildExamFromMatch(match: RegExpMatchArray): ParsedExam | null {
+  const first = match[1];
+  const startsWithDay = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|Sat|Sun)$/i.test(first);
+  const codeFirstPattern = match.length === 9 && /^[A-Z]{2,6}\s*-?\s*\d{3,4}\s*[A-Z]?$/i.test(match[5]);
+
+  let dayName: string;
+  let day: number;
+  let month: number;
+  let year: number;
+  let start: string | null;
+  let end: string | null;
+  let code: string;
+  let remainder: string;
+
+  if (startsWithDay && codeFirstPattern) {
+    dayName = normalizeDayName(match[1]);
+    day = Number(match[2]);
+    month = Number(match[3]);
+    year = Number(match[4]);
+    code = match[5];
+    start = normalizeTime(match[6]);
+    end = normalizeTime(match[7]);
+    remainder = match[8];
+  } else if (startsWithDay) {
+    dayName = normalizeDayName(match[1]);
+    day = Number(match[2]);
+    month = Number(match[3]);
+    year = Number(match[4]);
+    start = normalizeTime(match[5]);
+    end = normalizeTime(match[6]);
+    code = match[7];
+    remainder = match[8];
+  } else {
+    day = Number(match[1]);
+    month = Number(match[2]);
+    year = Number(match[3]);
+    dayName = normalizeDayName(match[4]);
+    start = normalizeTime(match[5]);
+    end = normalizeTime(match[6]);
+    code = match[7];
+    remainder = match[8];
+  }
+
+  if (!start || !end) return null;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (Number.isNaN(date.getTime()) || date.getUTCDate() !== day || date.getUTCMonth() !== month - 1) {
+    return null;
+  }
+
+  const details = parseExamDetails(remainder);
+
+  return {
+    date,
+    dayName,
+    start,
+    end,
+    code: code.replace(/\s+/g, ' ').replace(/\s*-\s*/g, '').trim().toUpperCase(),
+    title: details.title,
+    option: details.option,
+    instructor: details.instructor,
+    building: details.building,
+    venue: details.venue,
+    rows: details.rows,
+    students: details.students
+  };
+}
+
+function parseExamDetails(value: string): { title: string; option?: string; instructor?: string; building?: string; venue?: string; rows?: number; students?: number } {
+  let text = normalizeLine(value);
+  let rows: number | undefined;
+  let students: number | undefined;
+
+  const numbers = text.match(/\b(\d{1,4})\s+(\d{1,4})\s*$/);
+  if (numbers) {
+    rows = Number(numbers[1]);
+    students = Number(numbers[2]);
+    text = text.slice(0, numbers.index).trim();
+  }
+
+  let option: string | undefined;
+  for (const opt of OPTIONS) {
+    if (text.toLowerCase().includes(opt.toLowerCase())) {
+      option = opt;
+      text = text.replace(new RegExp(opt, 'i'), ' ').trim();
+      break;
+    }
+  }
+
+  let instructor: string | undefined;
+  const instructorMatch = text.match(/\b(?:Mr|Mrs|Ms|Dr|Prof)\.?\s+[A-Z][A-Za-z'.-]*(?:\s+[A-Z][A-Za-z'.-]*){0,3}\b/);
+  if (instructorMatch) {
+    instructor = instructorMatch[0].trim();
+    text = (text.slice(0, instructorMatch.index).trim() + ' ' + text.slice((instructorMatch.index || 0) + instructorMatch[0].length).trim()).trim();
+  }
+
+  return { title: text || 'Unknown', option, instructor, rows, students };
+}
+
+function normalizeDayName(value: string): string {
+  const lower = value.toLowerCase();
+  if (lower.startsWith('mon')) return 'Monday';
+  if (lower.startsWith('tue')) return 'Tuesday';
+  if (lower.startsWith('wed')) return 'Wednesday';
+  if (lower.startsWith('thu')) return 'Thursday';
+  if (lower.startsWith('fri')) return 'Friday';
+  if (lower.startsWith('sat')) return 'Saturday';
+  return 'Sunday';
+}
+
+function normalizeTime(value: string): string | null {
+  const match = value.trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+  if (!match) return null;
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const meridiem = match[3];
+
+  if (meridiem === 'PM' && hour !== 12) hour += 12;
+  if (meridiem === 'AM' && hour === 12) hour = 0;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  return hour.toString().padStart(2, '0') + ':' + minute.toString().padStart(2, '0');
 }

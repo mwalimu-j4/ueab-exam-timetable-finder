@@ -6,6 +6,10 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[auth] upload request rejected: missing bearer token', {
+        method: req.method,
+        path: req.originalUrl,
+      });
       return res.status(401).json({ error: 'Unauthorized - No token provided' });
     }
 
@@ -15,6 +19,11 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     req.user = decoded;
     next();
   } catch (error) {
+    console.error('[auth] request rejected: invalid bearer token', {
+      method: req.method,
+      path: req.originalUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return res.status(401).json({ error: 'Unauthorized - Invalid token' });
   }
 }

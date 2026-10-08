@@ -101,7 +101,7 @@ function TimetablesPage() {
     } catch (error: any) {
       toast({
         title: 'Upload failed',
-        description: error.response?.data?.message || 'Failed to upload timetable',
+        description: error.response?.data?.error || 'Failed to upload timetable',
         variant: 'destructive',
       });
     } finally {
@@ -127,7 +127,7 @@ function TimetablesPage() {
     } catch (error: any) {
       toast({
         title: 'Publish failed',
-        description: error.response?.data?.message || 'Failed to publish timetable',
+        description: error.response?.data?.error || 'Failed to publish timetable',
         variant: 'destructive',
       });
     } finally {
@@ -152,7 +152,7 @@ function TimetablesPage() {
     } catch (error: any) {
       toast({
         title: 'Discard failed',
-        description: error.response?.data?.message || 'Failed to discard timetable',
+        description: error.response?.data?.error || 'Failed to discard timetable',
         variant: 'destructive',
       });
     } finally {
@@ -173,7 +173,7 @@ function TimetablesPage() {
     } catch (error: any) {
       toast({
         title: 'Activation failed',
-        description: error.response?.data?.message || 'Failed to activate timetable',
+        description: error.response?.data?.error || 'Failed to activate timetable',
         variant: 'destructive',
       });
     } finally {
@@ -202,7 +202,7 @@ function TimetablesPage() {
     } catch (error: any) {
       toast({
         title: 'Deletion failed',
-        description: error.response?.data?.message || 'Failed to delete timetable',
+        description: error.response?.data?.error || 'Failed to delete timetable',
         variant: 'destructive',
       });
     } finally {

@@ -9,6 +9,7 @@ import {
   deleteVersion,
 } from '../services/timetable.service';
 import { parseTimetablePDF } from '../utils/pdfParser';
+import { deleteTimetablePdf, uploadTimetablePdf } from '../services/cloudinary.service';
 
 export async function login(req: Request, res: Response) {
   try {
@@ -58,47 +59,61 @@ export async function uploadTimetable(req: Request, res: Response) {
     }
 
     const name = req.body.name || `Upload ${new Date().toISOString()}`;
+    const cloudinaryUpload = await uploadTimetablePdf(req.file.buffer, name);
+    const sampleRows = exams.slice(0, 20);
 
-    await prisma.$transaction(async (tx) => {
-      const version = await tx.timetableVersion.create({
-        data: {
-          name,
-          pdfUrl: undefined,
-          rowCount: exams.length,
-          isActive: false,
-        },
+    try {
+      const version = await prisma.$transaction(async (tx) => {
+        const createdVersion = await tx.timetableVersion.create({
+          data: {
+            name,
+            pdfUrl: cloudinaryUpload.secure_url,
+            rowCount: exams.length,
+            isActive: false,
+          },
+        });
+
+        await tx.exam.createMany({
+          data: exams.map(exam => ({
+            versionId: createdVersion.id,
+            date: exam.date,
+            dayName: exam.dayName,
+            start: exam.start,
+            end: exam.end,
+            code: exam.code,
+            title: exam.title,
+            option: exam.option,
+            instructor: exam.instructor,
+            building: exam.building,
+            venue: exam.venue,
+            rows: exam.rows,
+            students: exam.students,
+          })),
+        });
+
+        return createdVersion;
       });
-
-      await tx.exam.createMany({
-        data: exams.map(exam => ({
-          versionId: version.id,
-          date: exam.date,
-          dayName: exam.dayName,
-          start: exam.start,
-          end: exam.end,
-          code: exam.code,
-          title: exam.title,
-          option: exam.option,
-          instructor: exam.instructor,
-          building: exam.building,
-          venue: exam.venue,
-          rows: exam.rows,
-          students: exam.students,
-        })),
-      });
-
-      const sampleRows = exams.slice(0, 20);
 
       res.json({
         versionId: version.id,
         rowCount: exams.length,
         sampleRows,
         unparsedLines,
+        pdfUrl: version.pdfUrl,
       });
-    });
+    } catch (error) {
+      try {
+        await deleteTimetablePdf(cloudinaryUpload.public_id);
+      } catch (cleanupError) {
+        console.error('Cloudinary cleanup failed after database error:', cleanupError);
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Upload failed' });
+    const message = error instanceof Error ? error.message : 'Upload failed';
+    const status = message.startsWith('Cloudinary') ? 502 : 500;
+    res.status(status).json({ error: message });
   }
 }
 

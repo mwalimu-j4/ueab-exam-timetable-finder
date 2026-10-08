@@ -34,6 +34,18 @@ async function startServer(): Promise<void> {
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 
+  // Set timeouts to prevent silent hangs on slow operations
+  // Render's free tier has 512MB RAM, so give enough time for large PDF processing
+  server.requestTimeout = 180000; // 3 minutes
+  server.headersTimeout = 185000; // 5 seconds more than request timeout
+  server.keepAliveTimeout = 190000; // 5 seconds more than headers timeout
+
+  console.log('Server timeouts configured:', {
+    requestTimeout: server.requestTimeout / 1000 + 's',
+    headersTimeout: server.headersTimeout / 1000 + 's',
+    keepAliveTimeout: server.keepAliveTimeout / 1000 + 's',
+  });
+
   // Graceful shutdown
   const shutdown = async () => {
     console.log('Shutting down gracefully...');

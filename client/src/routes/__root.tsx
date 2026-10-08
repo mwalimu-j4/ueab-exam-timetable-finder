@@ -29,7 +29,7 @@ function RootComponent() {
   });
 
   return (
-    <div className="min-h-screen bg-surface dark:bg-[#140E24]">
+    <div className="min-h-screen flex flex-col bg-surface dark:bg-[#140E24]">
       <nav className="bg-white dark:bg-[#1E1633] shadow-sm">
         <div className="container mx-auto px-3 py-2.5 flex items-center justify-between gap-2">
           <button
@@ -45,7 +45,7 @@ function RootComponent() {
           </div>
         </div>
       </nav>
-      <main>
+      <main className="flex-1 flex flex-col">
         <Outlet />
       </main>
       <Toaster />

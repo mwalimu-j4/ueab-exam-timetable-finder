@@ -90,9 +90,9 @@ function Index() {
   const showResults = !showIdle && !loading && !error && results.length > 0;
 
   return (
-    <div className="min-h-screen bg-surface dark:bg-[#140E24]">
+    <div className="flex min-h-full flex-1 flex-col bg-surface dark:bg-[#140E24]">
       <SearchHero value={query} onChange={setQuery} />
-      <main className="container mx-auto px-4 py-6 max-w-2xl mb-24">
+      <main className="container mx-auto flex-1 w-full px-4 py-6 max-w-2xl mb-10">
         {cloudTimetable && (
           <section className="mb-6 rounded-2xl bg-white dark:bg-[#1E1633] p-5 shadow-card" aria-live="polite">
             <div className="flex items-center justify-between mb-3">
@@ -141,23 +141,27 @@ function Index() {
       <WhatsAppButton />
       
       {/* Footer */}
-      <footer className="text-center py-6 pb-24 text-sm text-gray-500 dark:text-gray-500 space-y-1">
+      <footer className="mt-auto border-t border-[#8A3FD8]/10 bg-white/70 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6 text-center text-sm text-gray-600 shadow-[0_-8px_30px_rgba(138,63,216,0.05)] backdrop-blur-sm dark:border-white/10 dark:bg-[#1E1633]/80 dark:text-gray-300">
+        <div className="mx-auto max-w-2xl">
+          <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-brand-gradient" />
         {activeVersionDate && (
-          <p>Timetable last updated: {new Date(activeVersionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-[#8A3FD8]">Updated {new Date(activeVersionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
         )}
-        <p>Made for UEAB students 💜</p>
-        <p>
-          Need help?{' '}
+        <p className="font-semibold text-slate-700 dark:text-white">Made for UEAB students <span aria-hidden="true">💜</span></p>
+        <p className="mt-2">
+          Need help? <span className="text-slate-400">·</span>{' '}
           <a
             href={WHATSAPP_LINK}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-whatsapp-green hover:underline font-medium"
+            className="font-semibold text-whatsapp-green hover:underline"
           >
             WhatsApp {SUPPORT_PHONE_DISPLAY}
           </a>
         </p>
-        <p className="text-gray-400">Developed by Joshua Mwalimu</p>
+        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Developed by Joshua Mwalimu</p>
+        <p className="mt-3 border-t border-slate-200/80 pt-3 text-xs text-slate-400 dark:border-white/10 dark:text-slate-500">© {new Date().getFullYear()} UEAB Exam Timetable Finder. All rights reserved.</p>
+        </div>
       </footer>
       
       <MyExamsSheet

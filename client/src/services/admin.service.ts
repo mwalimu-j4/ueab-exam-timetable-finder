@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api';
+import { API_URL, apiClient } from '@/lib/api';
 import type {
   LoginRequest,
   LoginResponse,
@@ -25,15 +25,49 @@ export async function uploadTimetable(
   formData.append('file', file);
   formData.append('name', name);
 
-  const response = await apiClient.post<UploadResponse>('/api/admin/timetables/upload', formData, {
-    onUploadProgress: (progressEvent) => {
-      if (progressEvent.total && onProgress) {
-        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+  return new Promise<UploadResponse>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}/api/admin/timetables/upload`);
+
+    const token = localStorage.getItem('ueab_admin_token');
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress = Math.round((event.loaded * 100) / event.total);
         onProgress(progress);
       }
-    },
+    };
+
+    xhr.onload = () => {
+      let payload: any = null;
+      try {
+        payload = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+      } catch {
+        payload = null;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300 && payload) {
+        resolve(payload as UploadResponse);
+        return;
+      }
+
+      reject({
+        response: {
+          status: xhr.status,
+          data: payload || { error: xhr.statusText || 'Failed to upload timetable' },
+        },
+      });
+    };
+
+    xhr.onerror = () => {
+      reject({ response: { data: { error: 'Network error while uploading timetable' } } });
+    };
+
+    xhr.send(formData);
   });
-  return response.data;
 }
 
 export async function publishTimetable(id: string): Promise<void> {

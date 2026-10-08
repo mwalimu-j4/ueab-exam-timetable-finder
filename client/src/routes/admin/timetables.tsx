@@ -77,6 +77,8 @@ function TimetablesPage() {
   };
 
   const handleUpload = async () => {
+    if (isUploading) return;
+
     if (!selectedFile || !name.trim()) {
       toast({
         title: 'Missing information',
@@ -263,18 +265,7 @@ function TimetablesPage() {
 
           {!uploadResult && (
             <>
-              {selectedFile && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                  <p className="text-sm text-green-800">
-                    <strong>Selected file:</strong> {selectedFile.name}
-                  </p>
-                  <p className="text-xs text-green-600 mt-1">
-                    Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              )}
-              
-              <Button
+<Button
                 onClick={handleUpload}
                 disabled={!selectedFile || !name.trim() || isUploading}
                 className="w-full"

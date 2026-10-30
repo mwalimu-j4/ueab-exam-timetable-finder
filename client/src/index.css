@@ -62,6 +62,13 @@
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color: #172033;
+  }
+
+  input,
+  textarea,
+  select {
+    color: #172033;
   }
   
   /* Accessible focus styles */

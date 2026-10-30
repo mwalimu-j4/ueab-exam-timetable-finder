@@ -92,7 +92,7 @@ function Index() {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-surface dark:bg-[#140E24]">
       <SearchHero value={query} onChange={setQuery} />
-      <main className="container mx-auto flex-1 w-full px-4 py-6 max-w-2xl mb-10">
+      <main className="mx-auto mb-10 w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {cloudTimetable && (
           <section className="mb-6 rounded-2xl bg-white dark:bg-[#1E1633] p-5 shadow-card" aria-live="polite">
             <div className="flex items-center justify-between mb-3">
@@ -116,8 +116,18 @@ function Index() {
         {showError && <EmptyState variant="error" />}
         {showNoResults && <EmptyState variant="no-results" />}
         {showResults && (
+          <section aria-labelledby="results-heading">
+            <div className="mb-4 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8A3FD8]">Search results</p>
+                <h2 id="results-heading" className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+                  {results.length} exam{results.length === 1 ? '' : 's'} found
+                </h2>
+              </div>
+              <p className="hidden text-right text-xs text-slate-500 sm:block">Tap save to add an exam to your timetable</p>
+            </div>
           <div
-            className="space-y-4"
+            className="grid gap-4 lg:grid-cols-2"
             role="list"
             aria-label={`${results.length} exam result${results.length !== 1 ? 's' : ''}`}
           >
@@ -131,6 +141,7 @@ function Index() {
               </div>
             ))}
           </div>
+          </section>
         )}
       </main>
       

@@ -94,6 +94,11 @@ for (const fixture of fixtures) {
 const wrapped = parseUeabTimetable(fixtures[0].line + '\ncontinued-noise-that-should-join');
 assert.equal(wrapped.exams.length, 1);
 
+const gluedVenue = parseUeabLine('Wed, 18-11-2026 09:00 AM 12:00 PM COSC070 INFORMATION COMMUNICATION TECHNOLOGY Inter Session 1 Mr. ADEGU ENOCK Auditorium 3 30');
+assert.ok(gluedVenue);
+assert.equal(gluedVenue.instructor, 'Mr. ADEGU ENOCK');
+assert.equal(gluedVenue.venue, 'Auditorium 3');
+
 const all = parseUeabTimetable(fixtures.map(fixture => fixture.line).join('\n'));
 assert.equal(all.exams.length, fixtures.length);
 assert.equal(all.unparsed.length, 0);

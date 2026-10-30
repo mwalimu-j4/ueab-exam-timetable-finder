@@ -17,6 +17,17 @@ interface MyExamsSheetProps {
 function getExportDetails(exam: Exam) {
   let title = exam.title.trim();
   let students = exam.students;
+  let instructor: string | undefined = exam.instructor?.trim();
+  let venue = [exam.building, exam.venue].filter(Boolean).join(' - ') || undefined;
+  const venueStart = /\b(?:Auditorium|Library|Science(?:\s+Building)?|FCSC|Humanities|Amphitheater|Laboratory|Lab)\b/i;
+  if (instructor) {
+    const embeddedVenue = instructor.match(venueStart);
+    if (embeddedVenue && embeddedVenue.index !== undefined) {
+      const venueText = instructor.slice(embeddedVenue.index).trim();
+      instructor = instructor.slice(0, embeddedVenue.index).trim();
+      if (!venue) venue = venueText;
+    }
+  }
   const studentMatch = title.match(/\s+(\d{1,4})\s*$/);
   if (students == null && studentMatch) {
     students = Number(studentMatch[1]);
@@ -28,11 +39,11 @@ function getExportDetails(exam: Exam) {
   if (!exam.option && optionMatch && optionMatch.index !== undefined) title = `${title.slice(0, optionMatch.index)} ${title.slice(optionMatch.index + optionMatch[0].length)}`.trim();
 
   const instructorMatch = title.match(/\s+(Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Prof\.?)\s+[A-Z][A-Z .'-]+(?=\s+(?:Inter\s+Session|Blended|Group|Main|Auditorium|Library|Science|FCSC)\b|$)/i);
-  const instructor = exam.instructor || instructorMatch?.[0].trim();
+  instructor = instructor || instructorMatch?.[0].trim();
   if (!exam.instructor && instructorMatch && instructorMatch.index !== undefined) title = `${title.slice(0, instructorMatch.index)} ${title.slice(instructorMatch.index + instructorMatch[0].length)}`.trim();
 
   const venueMatch = title.match(/\s+((?:Auditorium|Library|Science(?:\s+Building)?|FCSC|Humanities|Amphitheater|Laboratory|Lab)\b.*)$/i);
-  const venue = [exam.building, exam.venue].filter(Boolean).join(' - ') || venueMatch?.[1]?.trim();
+  venue = venue || venueMatch?.[1]?.trim();
   if (!exam.venue && venueMatch && venueMatch.index !== undefined) title = title.slice(0, venueMatch.index).trim();
 
   return { title: title || exam.title, instructor, option, venue, students };

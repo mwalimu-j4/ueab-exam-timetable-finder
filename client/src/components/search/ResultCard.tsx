@@ -1,4 +1,4 @@
-import { Clock, MapPin, Check, Plus, User, Users } from 'lucide-react';
+import { Clock, MapPin, Check, Plus, User, Users, CalendarDays, Tag } from 'lucide-react';
 import type { Exam } from '@/types/api.types';
 import { formatExamDate, formatExamTime, getDayBadge } from '@/utils/dateFormat';
 import { Badge } from '@/components/ui/badge';
@@ -22,10 +22,10 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
   const venueText = [exam.building, exam.venue].filter(Boolean).join(' - ') || 'Venue TBA';
 
   return (
-    <div className="bg-white dark:bg-[#1E1633] rounded-2xl shadow-card hover:shadow-xl transition-shadow duration-200 border border-gray-100 dark:border-gray-800 p-5 sm:p-6 animate-fadeIn">
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card transition-shadow duration-200 hover:shadow-xl dark:border-gray-800 dark:bg-[#1E1633] sm:p-6 animate-fadeIn">
       {/* Top row: code badge + day badge */}
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="inline-block bg-brand-gradient text-white px-4 py-1.5 rounded-full font-bold text-base">
+        <div className="inline-block rounded-full bg-brand-gradient px-4 py-1.5 text-base font-bold text-white">
           {exam.code}
         </div>
         {dayBadge.variant && (
@@ -36,57 +36,46 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 leading-snug">
+      <h3 className="mb-4 text-lg font-bold leading-snug text-gray-900 dark:text-gray-100">
         {exam.title}
       </h3>
 
       {/* Info rows with icons */}
-      <div className="space-y-2.5 mb-4">
+      <div className="mb-4 grid gap-2.5 sm:grid-cols-2">
         {/* Date */}
         <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-          <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center mt-0.5">
-            📅
-          </div>
-          <span className="flex-1">{formatExamDate(exam.date)}</span>
+        <CalendarDays className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8A3FD8]" />
+        <span className="flex-1">{formatExamDate(exam.date)}</span>
         </div>
 
         {/* Time */}
         <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-          <Clock className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8A3FD8]" />
           <span className="flex-1">{formatExamTime(exam.start, exam.end)}</span>
         </div>
 
         {/* Venue */}
         <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-          <MapPin className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <MapPin className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8A3FD8]" />
           <span className="flex-1">{venueText}</span>
         </div>
 
-        {/* Instructor (if present) */}
-        {exam.instructor && (
-          <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-            <User className="h-5 w-5 flex-shrink-0 mt-0.5" />
-            <span className="flex-1">{exam.instructor}</span>
-          </div>
-        )}
+        <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+          <User className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8A3FD8]" />
+          <span className={`flex-1 ${exam.instructor ? '' : 'text-slate-400'}`}>{exam.instructor || 'Not available'}</span>
+        </div>
 
-        {/* Student count (if present and > 0) */}
-        {exam.students && exam.students > 0 && (
-          <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-            <Users className="h-5 w-5 flex-shrink-0 mt-0.5" />
-            <span className="flex-1">{exam.students} student{exam.students !== 1 ? 's' : ''}</span>
-          </div>
-        )}
+        <div className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+          <Users className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8A3FD8]" />
+          <span className={`flex-1 ${exam.students ? '' : 'text-slate-400'}`}>{exam.students ? `${exam.students} student${exam.students !== 1 ? 's' : ''}` : 'Not available'}</span>
+        </div>
       </div>
 
-      {/* Option badge (only if not Main) */}
-      {exam.option && exam.option !== 'Main' && (
-        <div className="mb-4">
-          <Badge variant="secondary" className="text-xs font-medium">
-            {exam.option}
-          </Badge>
-        </div>
-      )}
+      <div className="mb-4 flex items-center gap-2 text-sm">
+        <Tag className="h-4 w-4 text-[#8A3FD8]" />
+        <span className="text-slate-500">Option:</span>
+        <Badge variant="secondary" className="text-xs font-medium">{exam.option || 'Main / Not available'}</Badge>
+      </div>
 
       {/* Save/Saved button */}
       <button
@@ -113,6 +102,6 @@ export function ResultCard({ exam, isSaved, onToggleSave }: ResultCardProps) {
           </span>
         )}
       </button>
-    </div>
+    </article>
   );
 }

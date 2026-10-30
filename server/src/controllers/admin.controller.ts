@@ -98,50 +98,27 @@ export async function uploadTimetable(req: Request, res: Response) {
       },
     });
 
-    // PARSE WITH OLD PARSER FIRST (it gets the pre-extracted text)
-    stage = 'parsing-old';
-    const parseOldStart = Date.now();
-    let { exams, unparsedLines } = parseTimetablePDFFromText(rawText);
-    const parseOldTime = Date.now() - parseOldStart;
-    console.log('[upload] Old parser completed', { 
-      exams: exams.length, 
-      unparsed: unparsedLines.length,
-      parseTimeMs: parseOldTime 
-    });
-
-    // PARSE WITH NEW PARSER IF NEEDED
-    stage = 'parsing-new';
-    if (exams.length === 0) {
-      const rawLines = rawText.split(/\r?\n/).filter(line => line.trim().length > 0);
-      console.log('[upload] no exams from old parser, trying new parser', {
-        totalLineCount: rawLines.length,
-        firstUnparsedLines: unparsedLines.slice(0, 15).map(line => JSON.stringify(line)),
-      });
-    }
-
-    const parseNewStart = Date.now();
-    const fallbackResult = parseUeabTimetable(rawText);
-    const parseNewTime = Date.now() - parseNewStart;
+    // Use the structured parser so the table's instructor, option, venue, and
+    // student columns are retained. The legacy parser only extracts the row
+    // heading and would silently discard those fields.
+    stage = 'parsing';
+    const parseStart = Date.now();
+    const parsedResult = parseUeabTimetable(rawText);
+    const parseTime = Date.now() - parseStart;
     
     const memAfterParse = process.memoryUsage();
-    console.log('[upload] New parser completed', { 
-      exams: fallbackResult.exams.length, 
-      unparsed: fallbackResult.unparsed.length,
-      parseTimeMs: parseNewTime,
+    console.log('[upload] Structured parser completed', {
+      exams: parsedResult.exams.length,
+      unparsed: parsedResult.unparsed.length,
+      parseTimeMs: parseTime,
       memoryMB: {
         rss: (memAfterParse.rss / 1024 / 1024).toFixed(2),
         heap: (memAfterParse.heapUsed / 1024 / 1024).toFixed(2),
       },
     });
 
-    if (fallbackResult.exams.length > exams.length) {
-      console.log('[upload] using new parser result', {
-        oldExams: exams.length,
-        newExams: fallbackResult.exams.length,
-      });
-      exams = fallbackResult.exams;
-      unparsedLines = fallbackResult.unparsed;
-    }
+    let exams = parsedResult.exams;
+    let unparsedLines = parsedResult.unparsed;
 
     // Clear references to allow GC
     rawText = '';

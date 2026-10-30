@@ -44,6 +44,17 @@ const BUILDING_CODES_ARRAY = Array.from(KNOWN_BUILDING_CODES);
 const HEADER_TEXT = '2025/2026.2 FINAL EXAM TIMETABLE READ CAREFULLY';
 const OPTIONS = ['Inter Session 1', 'Inter Session 2', 'Blended Online', 'Group A', 'Group B', 'Group C', 'Group D', 'Main'];
 const TITLE_PREFIXES = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.', 'Mr', 'Mrs', 'Ms', 'Dr', 'Prof'];
+const VENUE_STARTS = new Set([
+  'Auditorium',
+  'Amphitheater',
+  'Library',
+  'FCSC',
+  'Humanities',
+  'Science',
+  'Building',
+  'Laboratory',
+  'Lab',
+]);
 
 export function parseUeabTimetable(text: string): UeabParseResult {
   const lines = prepareRows(text);
@@ -241,6 +252,11 @@ function parseTailTokens(tokens: string[]): TailFields {
         optionIndex = i;
         workingTokens.splice(i, 3);
         break;
+      } else {
+        option = 'Inter Session';
+        optionIndex = i;
+        workingTokens.splice(i, 2);
+        break;
       }
     } else if (token === 'Blended' && next === 'Online') {
       option = 'Blended Online';
@@ -267,7 +283,9 @@ function parseTailTokens(tokens: string[]): TailFields {
     }
   }
 
-  // Find instructor (starts with title prefix)
+  // Find instructor (starts with title prefix). In the source PDF, the
+  // venue column follows the instructor and is not always preceded by a
+  // building code, so stop at a known venue word as well.
   let instructorStartIndex = -1;
   let instructorEndIndex = -1;
   
@@ -277,7 +295,7 @@ function parseTailTokens(tokens: string[]): TailFields {
       instructorStartIndex = i;
       // Instructor is uppercase name tokens until we hit building code
       for (let j = i; j < workingTokens.length; j++) {
-        if (KNOWN_BUILDING_CODES.has(workingTokens[j])) {
+        if (KNOWN_BUILDING_CODES.has(workingTokens[j]) || isVenueStart(workingTokens[j])) {
           instructorEndIndex = j - 1;
           break;
         }
@@ -297,12 +315,13 @@ function parseTailTokens(tokens: string[]): TailFields {
     instructor = workingTokens.slice(instructorStartIndex, instructorEndIndex + 1).join(' ');
   }
 
-  // Find building code
+  // Find building code or venue start. Some timetable exports have no
+  // separate building column and start directly with "Auditorium 3".
   let buildingIndex = -1;
   let buildingCode: string | undefined;
   
-  for (let i = instructorEndIndex + 1; i < workingTokens.length; i++) {
-    if (KNOWN_BUILDING_CODES.has(workingTokens[i])) {
+  for (let i = Math.max(instructorEndIndex + 1, 0); i < workingTokens.length; i++) {
+    if (KNOWN_BUILDING_CODES.has(workingTokens[i]) || isVenueStart(workingTokens[i])) {
       buildingCode = workingTokens[i];
       buildingIndex = i;
       break;
@@ -316,9 +335,17 @@ function parseTailTokens(tokens: string[]): TailFields {
 
   if (buildingIndex !== -1) {
     rawVenueText = workingTokens.slice(buildingIndex).join(' ');
-    const parsed = parseVenue(rawVenueText, buildingCode!);
-    building = parsed.building;
-    venue = parsed.venue;
+    if (isVenueStart(buildingCode!)) {
+      venue = rawVenueText;
+    } else {
+      const parsed = parseVenue(rawVenueText, buildingCode!);
+      building = parsed.building;
+      venue = parsed.venue;
+    }
+  }
+
+  function isVenueStart(value: string): boolean {
+    return VENUE_STARTS.has(value.replace(/[,:]$/, ''));
   }
 
   // Title is everything before instructor (or before building if no instructor)

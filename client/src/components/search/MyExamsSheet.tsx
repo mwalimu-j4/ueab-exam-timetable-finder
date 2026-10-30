@@ -14,6 +14,30 @@ interface MyExamsSheetProps {
   onDownload?: () => void;
 }
 
+function getExportDetails(exam: Exam) {
+  let title = exam.title.trim();
+  let students = exam.students;
+  const studentMatch = title.match(/\s+(\d{1,4})\s*$/);
+  if (students == null && studentMatch) {
+    students = Number(studentMatch[1]);
+    title = title.slice(0, studentMatch.index).trim();
+  }
+
+  const optionMatch = title.match(/\s+(Inter\s+Session(?:\s+[12])?|Blended\s+Online|Group\s+[A-D]|Main)\b/i);
+  const option = exam.option || optionMatch?.[1];
+  if (!exam.option && optionMatch && optionMatch.index !== undefined) title = `${title.slice(0, optionMatch.index)} ${title.slice(optionMatch.index + optionMatch[0].length)}`.trim();
+
+  const instructorMatch = title.match(/\s+(Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Prof\.?)\s+[A-Z][A-Z .'-]+(?=\s+(?:Inter\s+Session|Blended|Group|Main|Auditorium|Library|Science|FCSC)\b|$)/i);
+  const instructor = exam.instructor || instructorMatch?.[0].trim();
+  if (!exam.instructor && instructorMatch && instructorMatch.index !== undefined) title = `${title.slice(0, instructorMatch.index)} ${title.slice(instructorMatch.index + instructorMatch[0].length)}`.trim();
+
+  const venueMatch = title.match(/\s+((?:Auditorium|Library|Science(?:\s+Building)?|FCSC|Humanities|Amphitheater|Laboratory|Lab)\b.*)$/i);
+  const venue = [exam.building, exam.venue].filter(Boolean).join(' - ') || venueMatch?.[1]?.trim();
+  if (!exam.venue && venueMatch && venueMatch.index !== undefined) title = title.slice(0, venueMatch.index).trim();
+
+  return { title: title || exam.title, instructor, option, venue, students };
+}
+
 export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate, onDownload }: MyExamsSheetProps) {
   const [open, setOpen] = useState(false);
 
@@ -95,7 +119,8 @@ export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate, onDo
     y += 29;
 
     sortedExams.forEach((exam, index) => {
-      const titleLines = doc.splitTextToSize(unavailable(exam.title, 'Course title not available'), contentWidth - 12) as string[];
+      const details = getExportDetails(exam);
+      const titleLines = doc.splitTextToSize(unavailable(details.title, 'Course title not available'), contentWidth - 12) as string[];
       const cardHeight = 37 + Math.max(0, titleLines.length - 1) * 4.5;
       if (y + cardHeight > pageHeight - 23) {
         drawFooter();
@@ -123,10 +148,10 @@ export function MyExamsSheet({ saved, clashes, onRemove, activeVersionDate, onDo
       doc.setTextColor(...muted);
       doc.text(`DATE  ${formatExamDate(exam.date)}`, margin + 10, detailY);
       doc.text(`TIME  ${formatExamTime(exam.start, exam.end)}`, margin + 10, detailY + 6);
-      doc.text(`VENUE  ${venue(exam)}`, margin + 10, detailY + 12);
-      doc.text(`OPTION  ${unavailable(exam.option, 'Main / Not available')}`, margin + 100, detailY);
-      doc.text(`INSTRUCTOR  ${unavailable(exam.instructor, 'Not available')}`, margin + 100, detailY + 6);
-      doc.text(`STUDENTS  ${exam.students && exam.students > 0 ? exam.students : 'Not available'}`, margin + 100, detailY + 12);
+      doc.text(`VENUE  ${unavailable(details.venue, venue(exam))}`, margin + 10, detailY + 12);
+      doc.text(`OPTION  ${unavailable(details.option, 'Main / Not available')}`, margin + 100, detailY);
+      doc.text(`INSTRUCTOR  ${unavailable(details.instructor, 'Not available')}`, margin + 100, detailY + 6);
+      doc.text(`STUDENTS  ${details.students && details.students > 0 ? details.students : 'Not available'}`, margin + 100, detailY + 12);
       y += cardHeight + (index === sortedExams.length - 1 ? 0 : 6);
     });
 

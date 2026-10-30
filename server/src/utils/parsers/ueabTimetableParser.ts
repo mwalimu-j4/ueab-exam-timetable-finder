@@ -334,13 +334,27 @@ function parseTailTokens(tokens: string[]): TailFields {
   let rawVenueText: string | undefined;
 
   if (buildingIndex !== -1) {
-    rawVenueText = workingTokens.slice(buildingIndex).join(' ');
+    const venueTokens = workingTokens.slice(buildingIndex);
+    if (isVenueStart(buildingCode!) && rowSpec) venueTokens.push(rowSpec);
+    rawVenueText = venueTokens.join(' ');
     if (isVenueStart(buildingCode!)) {
       venue = rawVenueText;
     } else {
       const parsed = parseVenue(rawVenueText, buildingCode!);
       building = parsed.building;
       venue = parsed.venue;
+    }
+
+  }
+
+  // Keep a venue that was glued to the instructor in the source extraction
+  // out of the instructor column.
+  if (instructor) {
+    const embeddedVenue = instructor.match(/\b(?:Auditorium|Library|Science(?:\s+Building)?|FCSC|Humanities|Amphitheater|Laboratory|Lab)\b.*$/i);
+    if (embeddedVenue && embeddedVenue.index !== undefined) {
+      const embeddedVenueText = instructor.slice(embeddedVenue.index).trim();
+      instructor = instructor.slice(0, embeddedVenue.index).trim();
+      if (!venue) venue = embeddedVenueText;
     }
   }
 
